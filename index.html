@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>打单记账本</title>
+    <meta name="description" content="高效、轻量级的打单收益统计与记账系统">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent !important; }
+        :root {
+            --bg: #f8fafc;
+            --primary: #10b981;
+            --primary-hover: #0da271;
+            --primary-light: #ecfdf5;
+            --text: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --border: #e2e8f0;
+            --divider: #f1f5f9;
+            --green: #10b981; --green-bg: #ecfdf5; --green-text: #065f46;
+            --red: #f43f5e; --red-bg: #fff1f2; --red-text: #9f1239;
+            --amber: #f59e0b; --amber-bg: #fffbeb; --amber-text: #92400e;
+            --purple: #8b5cf6; --purple-bg: #faf5ff; --purple-text: #6b21a8;
+            --blue: #3b82f6; --blue-bg: #eff6ff; --blue-text: #1e40af;
+            --radius: 16px; --radius-sm: 8px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.02);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.05), 0 10px 10px -5px rgba(0,0,0,0.02);
+            --touch-target: 44px;
+            --card-padding-y: 12px; --card-padding-x: 16px;
+            --card-gap: 10px;
+            --card-title-size: 15px;
+            --card-meta-size: 11px;
+            --card-badge-size: 10px;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .dark {
+            --bg: #0f172a; --primary: #34d399; --primary-hover: #10b981; --primary-light: #064e3b;
+            --text: #f1f5f9; --text-secondary: #cbd5e1; --text-muted: #64748b;
+            --border: #334155; --divider: #1e293b;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.4);
+            --shadow-lg: 0 20px 25px -5px rgba(0,0,0,0.5);
+            --green: #34d399; --green-bg: #064e3b; --green-text: #a7f3d0;
+            --red: #fb7185; --red-bg: #4c0519; --red-text: #fecdd3;
+            --amber: #fbbf24; --amber-bg: #78350f; --amber-text: #fde68a;
+            --purple: #a78bfa; --purple-bg: #4c1d95; --purple-text: #ddd6fe;
+            --blue: #60a5fa; --blue-bg: #1e3a8a; --blue-text: #bfdbfe;
+        }
+        .dark.theme-purple { --bg: #1a1025; --divider: #2d1b3e; --border: #4a3065; --primary-light: #2d1b3e; }
+        .dark.theme-green { --bg: #0f1f17; --divider: #1e3328; --border: #2d4a3e; --primary-light: #1e3328; }
+        .dark.theme-slate { --bg: #1e1e2e; --divider: #2d2d3e; --border: #3d3d4e; --primary-light: #2d2d3e; }
+        .dark.theme-black { --bg: #0a0a0a; --divider: #1a1a1a; --border: #2a2a2a; --primary-light: #1a1a1a; }
+        .dark.theme-brown { --bg: #1f1714; --divider: #2e221c; --border: #4a3b32; --primary-light: #2e221c; }
+
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; font-size: 13px; overflow: hidden; }
+        .num, .amount-suffix, .sub-amount-field, .stat-card .num, .debt-total, .debt-sub-amount, .status-pill, .count, .sf-amount {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace, system-ui;
+            font-variant-numeric: tabular-nums; font-weight: 700;
+        }
+        input, select, textarea { font-family: inherit; }
+        .form-control { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; background: #fff; color: var(--text); transition: all 0.15s ease; }
+        .dark .form-control, .dark select.form-control { background: #1e293b; color: var(--text); border-color: var(--border); }
+        select.form-control { appearance: none; -webkit-appearance: none; background-image: none !important; padding-right: 12px; }
+        .dark select.form-control { background-image: none !important; padding-right: 12px; }
+        input:focus, select:focus, .form-control:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12) !important; outline: none !important; }
+        
+        .app { display: flex; flex-direction: column; height: var(--app-real-height, 100dvh); padding-top: var(--safe-top); }
+
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border); z-index: 100; flex-shrink: 0;
+            transition: transform 0.2s ease; will-change: transform;
+        }
+        .topbar.hidden { transform: translateY(-100%); }
+        .dark .topbar { background: rgba(15, 23, 42, 0.85); }
+        .brand { font-weight: 800; font-size: 15px; color: var(--text); letter-spacing: -0.02em; margin: 0; }
+
+        .search-container { flex: 1; max-width: 280px; position: relative; display: flex; align-items: center; }
+        .search-input { flex: 1; min-width: 0; padding: 6px 12px 6px 32px; border: 1px solid var(--border); border-radius: 20px; font-size: 12px; background: #f1f5f9; border-color: transparent; width: auto; }
+        .dark .search-input { background: #1e293b; color: var(--text); }
+        .search-input:focus { background: #fff; }
+        .dark .search-input:focus { background: #1e293b; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); display: flex; align-items: center; color: var(--text-muted); cursor: pointer; z-index: 1; }
+        .search-clear { margin-left: 4px; flex-shrink: 0; background: none; border: none; color: var(--text-muted); cursor: pointer; display: none; font-size: 14px; padding: 4px; line-height: 1; }
+        .search-clear.visible { display: block; }
+        .search-history { position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); z-index: 200; max-height: 150px; overflow-y: auto; display: none; }
+        .dark .search-history { background: #1e293b; border-color: var(--border); }
+        .search-history.active { display: block; }
+        .search-history-item { padding: 8px 12px; font-size: 12px; cursor: pointer; color: var(--text-secondary); border-bottom: 1px solid var(--divider); display: flex; justify-content: space-between; }
+        .search-history-item:hover { background: var(--primary-light); }
+        .search-history-item .remove { color: var(--text-muted); font-weight: bold; padding: 0 4px; }
+
+        .filter-bar { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+        .filter-bar select { max-width: 120px; }
+        .active-filters { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; min-height: 0; margin-top: 4px; }
+        .filter-tag { background: var(--primary-light); color: var(--primary); padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+        .filter-tag::after { content: '✕'; font-size: 10px; margin-left: 2px; }
+
+        .main-container { flex: 1; display: flex; overflow: hidden; position: relative; }
+        .drawer-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.15); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 990; display: none; }
+        .drawer-backdrop.active { display: block; }
+        .drawer-left { width: 200px; background: #fff; border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 1000; transition: all 0.2s ease; }
+        .dark .drawer-left { background: #1e293b; }
+        @media(min-width: 601px) { .drawer-left.collapsed { width: 0; overflow: hidden; border-right: none; } }
+        .sidebar-header { padding: 16px 16px 6px; font-weight: 700; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .sidebar-list { flex: 1; overflow-y: auto; padding: 4px 8px; list-style: none; }
+        .sidebar-item {
+            display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm);
+            cursor: pointer; color: var(--text-secondary); font-weight: 500; font-size: 13px; margin-bottom: 2px; transition: all 0.15s ease;
+        }
+        .sidebar-item:hover { background: #f8fafc; color: var(--text); }
+        .dark .sidebar-item:hover { background: #334155; }
+        .sidebar-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+        .sidebar-item .count { font-size: 10px; background: #f1f5f9; padding: 2px 6px; border-radius: 10px; color: var(--text-muted); font-weight: 600; }
+        .sidebar-item.active .count { background: #fff; color: var(--primary); }
+        .dark .sidebar-item .count { background: #334155; }
+        .dark .sidebar-item.active .count { background: #1e293b; }
+        .sidebar-item.parent { font-weight: 700; }
+        .sidebar-sub { padding-left: 20px; }
+        .sidebar-add-game { padding: 8px; margin: 4px 8px; border: 1px dashed var(--border); border-radius: var(--radius-sm); cursor: pointer; text-align: center; color: var(--primary); font-weight: 600; font-size: 12px; transition: all 0.15s ease; }
+        .sidebar-add-game:hover { background: var(--primary-light); border-color: var(--primary); }
+        .sidebar-actions { padding: 8px; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid var(--divider); }
+        .sidebar-action-btn { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; text-align: left; color: var(--text-secondary); font-weight: 500; font-size: 12px; background: #fff; display: flex; align-items: center; gap: 8px; transition: all 0.15s ease; box-shadow: var(--shadow-sm); }
+        .dark .sidebar-action-btn { background: #1e293b; }
+        .sidebar-action-btn:hover { background: #f8fafc; color: var(--text); border-color: var(--text-muted); }
+
+        .drawer-right {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 280px; background: #fff; border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; z-index: 1000; transform: translateX(100%); transition: transform 0.2s ease; box-shadow: var(--shadow-lg);
+            padding-bottom: var(--safe-bottom, 0px);
+        }
+        .dark .drawer-right { background: #1e293b; }
+        .drawer-right.active { transform: translateX(0); }
+
+        .content-area { flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px; padding-bottom: calc(68px + var(--safe-bottom, 0px)); }
+
+        .stats-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; flex-shrink: 0; }
+        .stat-card { background: #fff; border-radius: var(--radius-sm); padding: 10px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; flex-direction: column; transition: all 0.2s ease; cursor: pointer; position: relative; }
+        .dark .stat-card { background: #1e293b; }
+        .stat-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); border-color: var(--text-muted); }
+        .stat-card.active-filter { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(16,185,129,0.15); }
+        .stat-card .lbl { font-size: 10px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; margin-bottom: 4px; }
+        .stat-card .num { font-size: 16px; font-weight: 800; color: var(--text); }
+        .stat-card.accent .num { color: var(--primary); }
+        .stat-card.money .num { color: var(--green); }
+
+        .chart-row { display: flex; gap: 16px; flex-shrink: 0; align-items: center; }
+        .donut-chart { position: relative; width: 50px; height: 50px; flex-shrink: 0; }
+        .donut-chart svg { width: 100%; height: 100%; }
+        .donut-chart text { fill: var(--text); font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+
+        .deck-wrapper { flex: 1; width: 100%; overflow-x: hidden; overflow-y: auto; display: block; outline: none; padding-bottom: 8px; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; position: relative; }
+        .deck-container { display: flex; flex-direction: column; width: 100%; gap: 8px; padding: 2px; position: relative; }
+        .virtual-spacer { width: 100%; flex-shrink: 0; }
+
+        .swipe-item {
+            position: relative; overflow: hidden; background: #fff;
+            border-radius: var(--radius-sm); border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .dark .swipe-item { background: #1e293b; }
+        .swipe-item-inner {
+            position: relative; z-index: 2; background: inherit; display: flex; align-items: center;
+            padding: var(--card-padding-y) var(--card-padding-x); gap: var(--card-gap); transition: transform 0.2s ease; will-change: transform;
+        }
+        .swipe-item.open .swipe-item-inner { transform: translateX(-120px); }
+        .swipe-item-actions { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: stretch; z-index: 1; }
+        .swipe-action-btn {
+            width: 60px; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700; color: #fff; cursor: pointer; transition: background 0.15s;
+        }
+        .swipe-action-btn.edit { background: var(--primary); }
+        .swipe-action-btn.delete { background: var(--red); }
+        .swipe-action-btn:active { filter: brightness(0.9); }
+
+        .compact-row-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; cursor: pointer; }
+        .compact-row-title { font-size: var(--card-title-size); font-weight: 700; color: var(--text); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .compact-row-meta { display: flex; align-items: center; gap: 8px; font-size: var(--card-meta-size); color: var(--text-secondary); }
+        .compact-row-date, .compact-row-amount { white-space: nowrap; }
+        .compact-row-amount { font-weight: 700; color: var(--green); }
+        .compact-row-cat {
+            font-size: var(--card-badge-size); font-weight: 700; color: var(--primary);
+            background: var(--primary-light); padding: 2px 8px; border-radius: 10px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 6px;
+        }
+        .compact-row-check { flex-shrink: 0; }
+
+        body.compact-layout {
+            --card-padding-y: 6px; --card-padding-x: 12px;
+            --card-gap: 6px;
+            --card-title-size: 13px;
+            --card-meta-size: 10px;
+            --card-badge-size: 9px;
+        }
+
+        .status-btn {
+            display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 600;
+            cursor: pointer; border: none; user-select: none; transition: all 0.15s ease; line-height: 1.4; font-family: inherit;
+        }
+        .status-btn:hover { filter: brightness(0.92); }
+        .status-btn:active { transform: scale(0.95); }
+        .status-btn.done { background: var(--green-bg); color: var(--green-text); }
+        .status-btn.progress { background: #fff7ed; color: #c2410c; }
+        .status-btn.paid { background: var(--green-bg); color: var(--green-text); }
+        .status-btn.unpaid { background: var(--red-bg); color: var(--red-text); }
+        .sf-status-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .sf-status-row .status-btn { flex: 1; justify-content: center; min-height: 28px; font-size: 11px; padding: 4px 10px; border-radius: var(--radius-sm); }
+
+        .badge { display: inline-flex; align-items: center; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; line-height: 1.2; }
+        .badge-cat { background: var(--primary-light); color: var(--primary); }
+        .badge-src { background: #f1f5f9; color: var(--text-secondary); border: 1px solid var(--border); }
+        .dark .badge-src { background: #334155; }
+        .badge-order-type.boost { background: var(--blue-bg); color: var(--blue-text); }
+        .badge-order-type.rent { background: var(--purple-bg); color: var(--purple-text); }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 10px; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; border: 1px solid transparent; cursor: pointer; transition: all 0.15s ease; box-shadow: var(--shadow-sm); user-select: none; min-height: 28px; }
+        .btn:active { transform: scale(0.98); }
+        .btn-icon-only { background: none; border: none; font-size: 18px; cursor: pointer; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); }
+        .btn-icon-only:hover { background: #f1f5f9; color: var(--text); }
+        .dark .btn-icon-only:hover { background: #334155; }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-secondary { background: #fff; color: var(--text-secondary); border-color: var(--border); }
+        .dark .btn-secondary { background: #1e293b; }
+        .btn-secondary:hover { background: #f8fafc; border-color: var(--text-muted); }
+
+        .detail-sheet-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: none; justify-content: center; align-items: flex-end; z-index: 1500; }
+        .detail-sheet-overlay.active { display: flex; }
+        .detail-sheet { background: #fff; width: 100%; max-width: 500px; border-radius: var(--radius) var(--radius) 0 0; padding: 20px 20px calc(12px + var(--safe-bottom, 0px)); max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: slideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1); }
+        .dark .detail-sheet { background: #1e293b; }
+        .detail-sheet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; border-bottom: 1px solid var(--divider); padding-bottom: 12px; flex-shrink: 0; }
+        .detail-sheet-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 10px; }
+
+        .sub-grid { display: flex; flex-direction: column; gap: 12px; }
+        .sub-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-sm); transition: all 0.2s ease; }
+        .dark .sub-card { background: #1e293b; }
+        .sub-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+        .sub-card-header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+        .sub-card-title { font-weight: 700; color: var(--text); font-size: 13px; flex: 1; word-break: break-all; margin: 0; }
+        .sub-card-badge { font-size: 10px; padding: 3px 8px; border-radius: 12px; font-weight: 700; white-space: nowrap; }
+        .sub-card-badge.done { background: var(--green-bg); color: var(--green-text); }
+        .sub-card-badge.running { background: #fff7ed; color: #c2410c; }
+        .sub-card-progress-row { display: flex; flex-direction: column; gap: 6px; background: #f8fafc; padding: 10px 12px; border-radius: 8px; border: 1px solid #f1f5f9; }
+        .dark .sub-card-progress-row { background: #0f172a; border-color: #334155; }
+        .progress-metric-box { display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+        .metric-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+        .num-highlight { color: var(--primary); font-weight: 800; font-size: 13px; }
+        .progress-bar-bg { width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; overflow: hidden; position: relative; margin-top: 2px; }
+        .progress-bar-fill { background: linear-gradient(90deg, var(--primary-hover), var(--primary)); height: 100%; width: 0%; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 4px; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.15); }
+        .progress-bar-fill.completed-no-target { background: linear-gradient(90deg, #34d399, var(--green)); width: 100%; box-shadow: 0 1px 2px rgba(16, 185, 129, 0.15); }
+        .progress-bar-fill.empty { background: #cbd5e1; width: 100%; box-shadow: none; }
+        .sub-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .sub-card-pay-status { font-size: 11px; font-weight: 700; white-space: nowrap; padding: 3px 8px; border-radius: 6px; }
+        .sub-card-pay-status.paid { background: var(--green-bg); color: var(--green-text); }
+        .sub-card-pay-status.unpaid { background: var(--amber-bg); color: var(--amber-text); }
+        .sub-card-amount-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; margin-top: 4px; border-top: 1px dashed var(--border); width: 100%; }
+        .sub-card-amount-row .amount-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); }
+        .amount-input-wrapper { display: inline-flex; align-items: center; background: #f8fafc; border: 1px solid var(--border); border-radius: 8px; padding: 2px 10px; transition: all 0.15s ease; }
+        .dark .amount-input-wrapper { background: #0f172a; }
+        .amount-input-wrapper:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.12); background: #fff; }
+        .amount-prefix-symbol { font-size: 13px; font-weight: 700; color: var(--green); margin-right: 4px; user-select: none; }
+        .sub-card-amount-row input.sub-amount-field { width: 95px; border: none !important; background: transparent !important; padding: 4px 0; font-size: 14px; font-weight: 700; text-align: right; color: var(--text); outline: none !important; box-shadow: none !important; }
+        .sub-note { font-size: 11px; background: #f8fafc; padding: 6px 10px; border-radius: 4px; color: var(--text-secondary); border-left: 3px solid var(--primary); width: 100%; margin-top: 4px; word-break: break-all; }
+        .dark .sub-note { background: #0f172a; }
+
+        .sub-form-card { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 12px; position: relative; transition: all 0.2s ease; }
+        .dark .sub-form-card { background: #0f172a; }
+        .sub-form-card:focus-within { border-color: var(--primary); background: #fff; box-shadow: var(--shadow-sm); }
+        .sub-form-card .btn-del-sub { position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 12px; transition: color 0.15s; z-index: 10; }
+        .sub-form-card .btn-del-sub:hover { color: var(--red); }
+        .sub-form-card .sf-name { font-weight: 700; }
+        .sub-form-card .sf-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+        .sub-form-card .sf-row:last-of-type { margin-bottom: 0; }
+        .sub-form-card .sf-row label { font-size: 11px; font-weight: 700; color: var(--text-secondary); white-space: nowrap; margin-right: 2px; }
+        .sub-form-card .sf-row input, .sub-form-card .sf-row select { flex: 1; min-width: 0; }
+        .sub-form-card .sf-row .sf-cur, .sub-form-card .sf-row .sf-tgt { max-width: 95px; }
+        .sub-form-card .sf-row .sf-amount { max-width: 180px; font-weight: 700; color: var(--green-text); }
+
+        .modal-overlay-common { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.3); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 12px; }
+        .modal-overlay-common.active { display: flex; }
+        .modal, .trash-modal, .debt-modal, .import-modal { background: #fff; border-radius: var(--radius); width: 100%; max-width: 480px; padding: 20px 20px calc(12px + var(--safe-bottom, 0px)); max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); border: 1px solid var(--border); animation: modalScaleUp 0.18s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .dark .modal, .dark .trash-modal, .dark .debt-modal, .dark .import-modal { background: #1e293b; }
+        .modal-header, .trash-modal-header, .debt-modal-header, .import-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-shrink: 0; }
+        .modal-header h2, .trash-modal-header h2, .debt-modal-header h2, .import-modal-header h2 { font-size: 14px; font-weight: 700; color: var(--text); }
+        .modal-body, .trash-modal-body, .debt-modal-body, .import-modal-body { flex: 1; overflow-y: auto; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-weight: 700; font-size: 11px; margin-bottom: 4px; color: var(--text-secondary); text-transform: uppercase; }
+        .btn-add-sub { width: 100%; margin-top: 6px; border: 1.5px dashed var(--primary); background: #f8faff; color: var(--primary); border-radius: var(--radius-sm); padding: 10px; font-weight: 600; font-size: 12px; cursor: pointer; }
+        .dark .btn-add-sub { background: #1e1b4b; }
+        .btn-add-sub:hover { background: var(--primary-light); }
+        .trash-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 4px; gap: 10px; }
+        .dark .trash-item { background: #1e293b; color: var(--text); border-color: var(--border); }
+        .debt-summary { background: var(--amber-bg); border: 1px solid rgba(245,158,11,0.2); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .debt-summary .debt-total { font-size: 18px; font-weight: 800; color: var(--amber-text); }
+        .debt-order-group { margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .debt-order-title { font-weight: 700; font-size: 13px; color: var(--text); padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .dark .debt-order-title { background: #0f172a; }
+        .debt-sub-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px 8px 18px; font-size: 12px; color: var(--text-secondary); background: #fff; border-bottom: 1px solid var(--divider); gap: 10px; }
+        .dark .debt-sub-row { background: #1e293b; }
+        .debt-sub-amount { font-weight: 700; color: var(--red-text); }
+
+        .edit-section { margin-bottom: 16px; border-bottom: 1px dashed var(--divider); padding-bottom: 12px; }
+        .edit-section-title { font-size: 12px; font-weight: 800; color: var(--primary); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .edit-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        @media(max-width: 600px) { .edit-grid-2 { grid-template-columns: 1fr; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        @keyframes modalScaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .highlight { background: yellow; color: #000; border-radius: 2px; padding: 0 1px; }
+        .dark .highlight { background: #eab308; color: #000; }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .empty-state-icon { font-size: 48px; margin-bottom: 16px; }
+
+        .context-menu { position: fixed; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); z-index: 3000; padding: 4px 0; min-width: 120px; }
+        .dark .context-menu { background: #1e293b; }
+        .context-menu-item { padding: 8px 16px; font-size: 12px; cursor: pointer; color: var(--text-secondary); }
+        .context-menu-item:hover { background: var(--primary-light); }
+
+        .batch-bar { display: flex; align-items: center; gap: 8px; padding: 6px 0; background: transparent; flex-shrink: 0; flex-wrap: wrap; }
+        .batch-bar.hidden { display: none; }
+        .order-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+
+        .bottom-bar {
+            position: fixed; bottom: 0; left: 0; right: 0; z-index: 900;
+            display: flex; align-items: center; justify-content: center; gap: 2px;
+            padding: 8px 10px calc(6px + var(--safe-bottom, 0px));
+            background: rgba(255,255,255,0.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid var(--border);
+            transition: transform 0.2s ease; will-change: transform; transform: translateY(0);
+        }
+        .bottom-bar.hidden { transform: translateY(100%); }
+        .dark .bottom-bar { background: rgba(15,23,42,0.92); }
+        .bottom-bar-inner { display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; padding: 2px 0; max-width: 100%; }
+        .bottom-bar-inner::-webkit-scrollbar { display: none; }
+        .bottom-bar-btn { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; white-space: nowrap; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; flex-shrink: 0; box-shadow: var(--shadow-sm); min-height: 28px; }
+        .dark .bottom-bar-btn { background: #1e293b; }
+        .bottom-bar-btn:active { transform: scale(0.96); }
+        .bottom-bar-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .bottom-bar-btn.warn { background: var(--amber-bg); color: var(--amber-text); border-color: rgba(245,158,11,0.25); }
+        
+        .bottom-bar-toggle {
+            position: fixed; bottom: calc(8px + var(--safe-bottom, 0px)); right: 12px; z-index: 950;
+            width: 32px; height: 32px; border-radius: 50%;
+            background: #fff; border: 1px solid var(--border); box-shadow: var(--shadow-md);
+            display: none; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 14px; color: var(--text-secondary);
+            transition: transform 0.3s ease;
+        }
+        .bottom-bar-toggle.visible { display: flex; }
+        .dark .bottom-bar-toggle { background: #1e293b; }
+        .bottom-bar-toggle.raised { transform: translateY(calc(-50px - var(--safe-bottom, 0px))); }
+
+        .storage-warning {
+            position: fixed; top: 0; left: 0; right: 0; background: var(--red); color: #fff;
+            padding: 8px 16px; font-size: 12px; font-weight: 600; z-index: 5000;
+            display: none; align-items: center; justify-content: space-between;
+            padding-top: var(--safe-top, 0px);
+        }
+        .storage-warning.active { display: flex; }
+
+        @media(max-width: 600px) {
+            .stats-row { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+            .stat-card { padding: 6px; }
+            .stat-card .num { font-size: 12px; }
+            .drawer-left { position: fixed; top: 0; left: 0; bottom: 0; transform: translateX(-100%); box-shadow: var(--shadow-lg); width: 170px; }
+            .drawer-left.active-mobile { transform: translateX(0); }
+            .drawer-right { width: 85%; }
+            .search-container { max-width: 140px; }
+            .topbar { padding: 8px 12px; gap: 6px; }
+            .brand { font-size: 12px; max-width: 60px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        }
+    </style>
+</head><body>
+    <div class="storage-warning" id="storageWarning">
+        <span>⚠️ 存储空间已满，数据不再自动保存。请立即导出备份并清理旧数据。</span>
+        <div>
+            <button type="button" class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:none;" onclick="App.exportData()">导出备份</button>
+            <button type="button" class="btn" style="background:rgba(255,255,255,0.2);color:#fff;border:none;margin-left:8px;" onclick="App.tryRecoverStorage()">重试保存</button>
+        </div>
+    </div>
+    
+    <div class="app">
+        <header class="topbar" id="topbar">
+            <div class="topbar-left" style="display:flex; align-items:center; gap:8px;">
+                <button type="button" class="btn-icon-only" onclick="App.toggleLeftDrawer()" aria-label="打开侧边菜单">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+                </button>
+                <h1 class="brand">打单记账本</h1>
+            </div>
+            <div class="search-container" id="searchContainer">
+                <label class="search-icon" for="globalSearch" aria-label="搜索入口">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                </label>
+                <input type="search" class="search-input" id="globalSearch" placeholder="搜索订单..." oninput="App.handleSearchInput()" onfocus="App.showSearchHistory()" onblur="App.hideSearchHistory()">
+                <button type="button" class="search-clear" id="searchClear" onclick="App.clearSearch()" aria-label="清空搜索内容">✕</button>
+                <div class="search-history" id="searchHistory"></div>
+            </div>
+            <div class="topbar-right" style="display:flex; gap:6px; align-items:center;">
+                <button type="button" class="btn btn-primary" onclick="App.openCreateModal()">记新单</button>
+                <button type="button" class="btn-icon-only" onclick="App.toggleBottomBar()" aria-label="更多操作" style="font-size:20px;">⋮</button>
+            </div>
+        </header>
+        
+        <div class="main-container">
+            <div class="drawer-backdrop" id="drawerBackdrop" onclick="App.closeAllDrawers()"></div>
+            
+            <nav class="drawer-left" id="leftDrawer" aria-label="游戏分类与设置选择">
+                <div class="sidebar-header">游戏分类</div>
+                <ul class="sidebar-list" id="sidebarList"></ul>
+                <button type="button" class="sidebar-add-game" onclick="App.addNewGame()">＋ 添加新游戏</button>
+                <div class="sidebar-actions">
+                    <button type="button" class="sidebar-action-btn" onclick="App.openDebtModal()">📊 未结款项</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.openTrashModal()">🗑️ 回收站</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.exportData()">💾 导出备份</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.exportSelected()">📤 导出选中项</button>
+                    <button type="button" class="sidebar-action-btn" onclick="document.getElementById('importFile').click()">📂 导入数据</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.toggleDarkMode()" id="darkModeBtn">🌓 暗色模式</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.cycleTheme()">🎨 切换主题</button>
+                    <button type="button" class="sidebar-action-btn" onclick="App.toggleCompactLayout()" id="compactLayoutBtn">📏 紧凑模式</button>
+                    <input type="file" id="importFile" accept=".json" style="display:none;" onchange="App.handleImportFile(event)" aria-label="导入配置文件">
+                </div>
+            </nav>
+            
+            <main class="content-area">
+                <section class="stats-row" id="statsRow" aria-label="订单数据统计概述">
+                    <div class="stat-card accent" data-filter="all" onclick="App.quickFilter('','','')" role="button" tabindex="0"><div class="lbl">总订单数</div><div class="num" id="statTotal">0</div></div>
+                    <div class="stat-card" data-filter="done" onclick="App.quickFilter('','done','')" role="button" tabindex="0"><div class="lbl">已完成</div><div class="num" id="statDone">0</div></div>
+                    <div class="stat-card money" data-filter="paid" onclick="App.quickFilter('','','paid')" role="button" tabindex="0"><div class="lbl">已收金额</div><div class="num" id="statPaidAmount">¥0</div></div>
+                    <div class="stat-card" data-filter="boost" onclick="App.quickFilter('boost','','')" role="button" tabindex="0"><div class="lbl">代练收入</div><div class="num" id="statBoostPaidAmount">¥0</div></div>
+                    <div class="stat-card" data-filter="rent" onclick="App.quickFilter('rent','','')" role="button" tabindex="0"><div class="lbl">租号收入</div><div class="num" id="statRentPaidAmount">¥0</div></div>
+                    <div class="stat-card" data-filter="progress" role="button" tabindex="0"><div class="lbl">收款率</div><div class="num" id="statProgress">0%</div></div>
+                </section>
+                
+                <div class="chart-row">
+                    <div class="donut-chart" id="donutChart" style="width: 50px; height: 50px;"></div>
+                    <span style="font-size:11px; color:var(--text-muted);">完成率</span>
+                </div>
+                
+                <div class="filter-bar">
+                    <label for="filterOrderType" style="display:none;">过滤业务类型</label>
+                    <select class="form-control" id="filterOrderType" onchange="App.applyFilters()"><option value="">全部类型</option><option value="boost">代练</option><option value="rent">租号</option></select>
+                    
+                    <label for="filterDone" style="display:none;">过滤完成状态</label>
+                    <select class="form-control" id="filterDone" onchange="App.applyFilters()"><option value="">全部状态</option><option value="done">已完成</option><option value="undone">进行中</option></select>
+                    
+                    <label for="filterPaid" style="display:none;">过滤收款状态</label>
+                    <select class="form-control" id="filterPaid" onchange="App.applyFilters()"><option value="">全部收款</option><option value="paid">已收款</option><option value="unpaid">未收款</option></select>
+                </div>
+                
+                <div class="active-filters" id="activeFilters"></div>
+                
+                <div class="batch-bar hidden" id="batchBar">
+                    <label style="display:flex; align-items:center; gap:4px; font-size:12px; font-weight:600; cursor:pointer;"><input type="checkbox" class="order-checkbox" id="selectAllCheckbox" onchange="App.toggleSelectAll()"> 全选当前</label>
+                    <button type="button" class="btn btn-secondary" style="font-size:11px; padding:3px 8px;" onclick="App.batchDelete()">批量删除</button>
+                    <button type="button" class="btn btn-secondary" style="font-size:11px; padding:3px 8px;" onclick="App.batchMarkDone(true)">批量完成</button>
+                    <button type="button" class="btn btn-secondary" style="font-size:11px; padding:3px 8px;" onclick="App.batchMarkPaid(true)">批量收款</button>
+                    <button type="button" class="btn" style="font-size:11px; padding:3px 8px; background:var(--red-bg); color:var(--red-text); border:none;" onclick="App.deleteAllFiltered()">全删当前</button>
+                </div>
+                
+                <div class="deck-wrapper" id="deckWrapper"><div class="deck-container" id="cardDeckContainer"></div></div>
+            </main>
+            
+            <aside class="drawer-right" id="logDrawer" aria-label="系统操作日志">
+                <div style="padding:12px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border);">
+                    <span style="font-weight:800; font-size:13px;">操作日志</span>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" class="btn btn-secondary" style="font-size:11px; padding:2px 6px;" onclick="Log.clear()">清空</button>
+                        <button type="button" class="btn" style="padding:2px; background:none; box-shadow:none;" onclick="App.toggleRightDrawer(false)" aria-label="关闭日志">✕</button>
+                    </div>
+                </div>
+                <div id="logList" style="flex:1; overflow-y:auto; padding:12px 12px calc(8px + var(--safe-bottom, 0px)); display:flex; flex-direction:column; gap:6px;"></div>
+            </aside>
+        </div>
+    </div>
+
+    <nav class="bottom-bar" id="bottomBar" aria-label="底部快捷操作栏">
+        <div class="bottom-bar-inner" id="bottomBarInner">
+            <button type="button" class="bottom-bar-btn" id="bbUndo" onclick="Undo.undo()" disabled>↩ 撤销</button>
+            <button type="button" class="bottom-bar-btn" onclick="App.toggleRightDrawer(true)">📜 日志</button>
+            <button type="button" class="bottom-bar-btn warn" onclick="App.openDebtModal()">💰 未结款</button>
+            <button type="button" class="bottom-bar-btn" onclick="App.openTrashModal()">🗑️ 回收站</button>
+            <button type="button" class="bottom-bar-btn" onclick="App.exportData()">💾 导出</button>
+            <button type="button" class="bottom-bar-btn" onclick="document.getElementById('importFile').click()">📂 导入</button>
+        </div>
+    </nav>
+    <button type="button" class="bottom-bar-toggle visible" id="bottomBarToggleFloat" onclick="App.toggleBottomBar()" aria-label="展开或收起底栏">⋮</button>
+
+    <div class="detail-sheet-overlay" id="detailSheetOverlay" onclick="App.closeDetail()">
+        <div class="detail-sheet" onclick="event.stopPropagation()">
+            <header class="detail-sheet-header">
+                <div><div id="dsTags"></div><h2 id="dsTitle"></h2></div>
+                <button type="button" class="btn" onclick="App.closeDetail()" aria-label="关闭详情">✕</button>
+            </header>
+            <div class="detail-sheet-body" id="dsBody"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay-common" id="itemModal">
+        <div class="modal">
+            <header class="modal-header"><h2 id="modalTitle">记新单</h2><button type="button" class="btn" onclick="App.closeModal()" aria-label="关闭窗口">✕</button></header>
+            <div class="modal-body">
+                <form id="itemForm" onsubmit="App.saveItem(event)">
+                    <input type="hidden" id="editId">
+                    <div class="edit-section"><div class="edit-section-title">基本信息</div>
+                        <div class="edit-grid-2">
+                            <div class="form-group"><label for="fPlayDate">打单日期 *</label><input type="date" class="form-control" id="fPlayDate" required></div>
+                            <div class="form-group"><label for="fName">订单名称 *</label><input class="form-control" id="fName" placeholder="输入订单名称" required></div>
+                            <div class="form-group"><label for="fCategory">所属游戏</label><input class="form-control" id="fCategory" placeholder="例如：王者荣耀"></div>
+                            <div class="form-group"><label for="fSource">详细来源</label><input class="form-control" id="fSource" placeholder="区服、渠道等"></div>
+                            <div class="form-group"><label for="fOrderType">业务类型</label><select class="form-control" id="fOrderType"><option value="boost">代练</option><option value="rent">租号</option></select></div>
+                        </div>
+                    </div>
+                    <div class="edit-section"><div class="edit-section-title">子任务列表</div><div id="subsContainer"></div><button type="button" class="btn-add-sub" onclick="App.addSubRow()">＋ 添加子任务</button></div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:14px; padding-top:10px; border-top:1px solid var(--divider);">
+                        <button type="button" class="btn btn-secondary" onclick="App.closeModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay-common" id="importModal">
+        <div class="import-modal">
+            <header class="import-modal-header"><h2>导入数据</h2><button type="button" class="btn" onclick="App.closeImportModal()" aria-label="关闭窗口">✕</button></header>
+            <div class="import-modal-body" style="display:flex; flex-direction:column; gap:12px;">
+                <p style="font-size:13px; color:var(--text-secondary);">检测到备份文件，请选择导入方式：</p>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <button type="button" class="btn btn-primary" style="justify-content:center; padding:10px;" onclick="App.confirmImport('merge')">🔀 智能合并（推荐）</button>
+                    <p style="font-size:11px; color:var(--text-muted); margin-left:4px;">自动去重，保留现有数据并追加新订单</p>
+                    <button type="button" class="btn btn-secondary" style="justify-content:center; padding:10px;" onclick="App.confirmImport('overwrite')">🗑️ 完全覆盖</button>
+                    <p style="font-size:11px; color:var(--text-muted); margin-left:4px;">清空现有所有数据，仅保留备份内容</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay-common" id="debtModal">
+        <div class="debt-modal">
+            <header class="debt-modal-header"><h2>未结款项明细</h2><button type="button" class="btn" onclick="document.getElementById('debtModal').classList.remove('active')" aria-label="关闭窗口">✕</button></header>
+            <div class="debt-modal-body" id="debtModalBody"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay-common" id="trashModal">
+        <div class="trash-modal">
+            <header class="trash-modal-header">
+                <h3>回收站</h3>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn btn-secondary" style="font-size:11px;" onclick="App.batchRestoreTrash()">批量还原</button>
+                    <button type="button" class="btn" style="font-size:11px; background:var(--red-bg); color:var(--red-text);" onclick="App.batchPermanentDeleteTrash()">批量删除</button>
+                    <button type="button" class="btn" onclick="document.getElementById('trashModal').classList.remove('active')" aria-label="关闭窗口">✕</button>
+                </div>
+            </header>
+            <div class="trash-modal-body" id="trashModalBody"></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay-common" id="confirmModal">
+        <div class="modal" style="max-width:360px;">
+            <header class="modal-header"><h3>确认操作</h3></header>
+            <div class="modal-body" id="confirmModalMsg" style="text-align:center;padding:20px;"></div>
+            <div style="display:flex;justify-content:center;gap:10px;padding-bottom:20px;">
+                <button type="button" class="btn btn-secondary" onclick="App.closeConfirm(false)">取消</button>
+                <button type="button" class="btn btn-primary" onclick="App.closeConfirm(true)">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu" style="display:none;"></div><script>
+    const CONFIG = {
+        DB_NAME: 'BoostAccountingDB',
+        DB_VERSION: 1,
+        STORE_NAME: 'appData',
+        LOG_KEY: 'logs',
+        TRASH_KEY: 'trash',
+        FIRST_RUN_KEY: 'firstRun',
+        DARK_KEY: 'darkMode',
+        THEME_KEY: 'theme',
+        COMPACT_KEY: 'compactLayout',
+        THEMES: ['', 'theme-purple', 'theme-green', 'theme-slate', 'theme-black', 'theme-brown'],
+        SEARCH_HISTORY_KEY: 'searchHistory',
+        SIDEBAR_EXPANDED_KEY: 'sidebarExpanded',
+        DATA_VERSION: '3.0',
+        AMOUNT_MAX: 9999999,
+        PROGRESS_MAX: 999999999,
+        ITEM_HEIGHT: 68,
+        BUFFER_SIZE: 5,
+        ORDER_TYPES: ['boost', 'rent'],
+        LOG_MAX: 100,
+        UNDO_MAX: 20,
+        SAVE_DEBOUNCE: 800
+    };
+
+    const IDBStorage = {
+        _db: null,
+        _ready: false,
+        _queue: [],
+        _txLock: Promise.resolve(),
+        async init() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(CONFIG.DB_NAME, CONFIG.DB_VERSION);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains(CONFIG.STORE_NAME)) {
+                        db.createObjectStore(CONFIG.STORE_NAME);
+                    }
+                };
+                request.onsuccess = (e) => {
+                    this._db = e.target.result;
+                    this._ready = true;
+                    this._queue.forEach(fn => fn());
+                    this._queue = [];
+                    resolve();
+                };
+                request.onerror = () => {
+                    this._ready = true;
+                    this._queue.forEach(fn => fn());
+                    this._queue = [];
+                    reject(request.error);
+                };
+            });
+        },
+        _whenReady() {
+            if (this._ready) return Promise.resolve();
+            return new Promise(resolve => this._queue.push(resolve));
+        },
+        async get(key) {
+            if (!State.storageAvailable) return null;
+            await this._whenReady();
+            return new Promise((resolve) => {
+                const tx = this._db.transaction(CONFIG.STORE_NAME, 'readonly');
+                const store = tx.objectStore(CONFIG.STORE_NAME);
+                const req = store.get(key);
+                req.onsuccess = () => resolve(req.result ?? null);
+                req.onerror = () => resolve(null);
+            });
+        },
+        async set(key, value) {
+            if (!State.storageAvailable) return false;
+            await this._whenReady();
+            return new Promise((resolve) => {
+                this._txLock = this._txLock.then(() => {
+                    return new Promise((txResolve) => {
+                        try {
+                            const tx = this._db.transaction(CONFIG.STORE_NAME, 'readwrite');
+                            const store = tx.objectStore(CONFIG.STORE_NAME);
+                            store.put(value, key);
+                            tx.oncomplete = () => { txResolve(); resolve(true); };
+                            tx.onerror = () => { txResolve(); resolve(false); };
+                        } catch (e) {
+                            console.error("Critical write fail:", e);
+                            txResolve();
+                            resolve(false);
+                        }
+                    });
+                });
+            });
+        },
+        async remove(key) {
+            if (!State.storageAvailable) return false;
+            await this._whenReady();
+            return new Promise((resolve) => {
+                const tx = this._db.transaction(CONFIG.STORE_NAME, 'readwrite');
+                const store = tx.objectStore(CONFIG.STORE_NAME);
+                store.delete(key);
+                tx.oncomplete = () => resolve(true);
+                tx.onerror = () => resolve(false);
+            });
+        }
+    };
+
+    const Util = {
+        clone(obj) {
+            try { return structuredClone(obj); } catch { return JSON.parse(JSON.stringify(obj)); }
+        },
+        esc(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = String(str);
+            return div.innerHTML;
+        },
+        escAttr(str) {
+            return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        },
+        fmtMoney(n) {
+            let a = Number(n) || 0;
+            if (!isFinite(a) || a < 0) a = 0;
+            if (a > CONFIG.AMOUNT_MAX) a = CONFIG.AMOUNT_MAX;
+            return '¥' + (Math.round(a * 100) / 100).toFixed(2);
+        },
+        clampAmt(v) {
+            let a = Number(v) || 0;
+            if (!isFinite(a) || a < 0) a = 0;
+            if (a > CONFIG.AMOUNT_MAX) a = CONFIG.AMOUNT_MAX;
+            return Math.round(a * 100) / 100;
+        },
+        clampProg(v) {
+            let a = Number(v) || 0;
+            if (!isFinite(a) || a < 0) a = 0;
+            if (a > CONFIG.PROGRESS_MAX) a = CONFIG.PROGRESS_MAX;
+            return Math.round(a);
+        },
+        cents(n) { return Math.round((Number(n) || 0) * 100); },
+        fromCents(c) { return c / 100; },
+        genId() {
+            try { if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID(); } catch { } return 'id-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
+        },
+        uniqueId(set = new Set()) {
+            let id;
+            do { id = Util.genId(); } while (set.has(id));
+            return id;
+        },
+        getLocalDateStr(date = new Date()) {
+            const pad2 = n => n < 10 ? '0' + n : '' + n;
+            return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate());
+        },
+        validate(item) {
+            if (!item || typeof item !== 'object') return false;
+            try {
+                item.id = item.id ? String(item.id) : Util.genId();
+                item.name = String(item.name || '未命名订单').trim();
+                item.category = String(item.category || '未分类').trim();
+                item.source = String(item.source || '').trim();
+                if (!item.playDate || isNaN(Date.parse(item.playDate))) {
+                    item.playDate = Util.getLocalDateStr();
+                } else {
+                    item.playDate = String(item.playDate);
+                }
+                if (!CONFIG.ORDER_TYPES.includes(item.orderType)) item.orderType = 'boost';
+                if (!Array.isArray(item.subs)) item.subs = [];
+                item.subs = item.subs.filter(s => {
+                    if (!s || typeof s !== 'object') return false;
+                    s.id = s.id ? String(s.id) : Util.genId();
+                    s.isDone = !!s.isDone;
+                    s.isPaid = !!s.isPaid;
+                    s.amount = Util.clampAmt(s.amount);
+                    s.current = Util.clampProg(s.current);
+                    s.target = Util.clampProg(s.target);
+                    s.note = String(s.note || '');
+                    return true;
+                });
+                return true;
+            } catch(err) {
+                console.error("Critical item damage:", err);
+                return false;
+            }
+        },
+        highlight(text, kw) {
+            if (!kw) return Util.esc(text);
+            const regex = new RegExp(`(${kw.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+            return Util.esc(text).replace(regex, '<span class="highlight">$1</span>');
+        },
+        orderFingerprint(order) {
+            return [order.name, order.category, order.source, order.playDate, order.orderType].join('|');
+        }
+    };
+
+    const State = {
+        dataset: [],
+        logset: [],
+        undoStack: [],
+        trash: [],
+        activeCategory: '',
+        activeDetailId: null,
+        currentSearchKeyword: '',
+        storageAvailable: true,
+        itemHeight: CONFIG.ITEM_HEIGHT,
+        itemHeights: [],
+        _dataVersion: 0,
+        visibleStart: 0,
+        visibleEnd: 0,
+        _skipScroll: false,
+        bottomBarCollapsed: false,
+        lastBackupTime: Date.now(),
+        selectedIds: new Set(),
+        trashSelected: new Set(),
+        searchHistory: [],
+        filterOrderType: '',
+        filterDone: '',
+        filterPaid: '',
+        darkMode: false,
+        theme: '',
+        compactLayout: false,
+        importBuffer: null,
+        _cachedFiltered: null,
+        _cacheValid: false,
+        _lastQuotaWarningTime: 0
+    };
+
+    function dataChanged() {
+        State._dataVersion++;
+    }
+
+    const Storage = {
+        _timer: null,
+        async get(key, fallback = null) {
+            if (!State.storageAvailable) return fallback;
+            try {
+                const value = await IDBStorage.get(key);
+                return value !== null ? value : fallback;
+            } catch { return fallback; }
+        },
+        async set(key, value) {
+            if (!State.storageAvailable) return false;
+            try {
+                return await IDBStorage.set(key, value);
+            } catch { return false; }
+        },
+        async saveAll(immediate = false) {
+            if (!State.storageAvailable) {
+                this._handleQuotaError();
+                return;
+            }
+            if (!immediate) {
+                clearTimeout(this._timer);
+                this._timer = setTimeout(() => this._doSave(), CONFIG.SAVE_DEBOUNCE);
+                return;
+            }
+            await this._doSave();
+        },
+        async _doSave() {
+            if (!State.storageAvailable) return;
+            try {
+                const success = await Storage.set('dataset', State.dataset);
+                if (!success) throw new Error("IDB Core Write Failed");
+                await Storage.set(CONFIG.LOG_KEY, State.logset);
+                await Storage.set(CONFIG.TRASH_KEY, State.trash);
+                State.lastBackupTime = Date.now();
+                if (!State.storageAvailable) {
+                    State.storageAvailable = true;
+                    document.getElementById('storageWarning').classList.remove('active');
+                }
+            } catch (e) {
+                console.error('Core storage collapsed, running fallbacks...', e);
+                try {
+                    const minified = State.dataset.map(o => ({
+                        i: o.id, n: o.name, c: o.category, d: o.playDate, t: o.orderType,
+                        s: o.subs.map(s => [s.name, s.isDone?1:0, s.isPaid?1:0, s.amount])
+                    }));
+                    localStorage.setItem('EMERGENCY_BACKUP_DATA', JSON.stringify(minified));
+                    Log.push('⚡ 系统：IndexedDB 写入失败，紧急备份已快照到本地闪存！');
+                } catch(err) {
+                    console.error('Dual storage failed!', err);
+                }
+                this._handleQuotaError();
+            }
+        },
+        _handleQuotaError() {
+            const now = Date.now();
+            if (now - State._lastQuotaWarningTime < 30000) {
+                App.exportData(true);
+                return;
+            }
+            State._lastQuotaWarningTime = now;
+            document.getElementById('storageWarning').classList.add('active');
+            State.storageAvailable = false;
+            App.exportData(true);
+        },
+        async tryRecover() {
+            try {
+                await IDBStorage.set('__test__', '1');
+                await IDBStorage.remove('__test__');
+                State.storageAvailable = true;
+                document.getElementById('storageWarning').classList.remove('active');
+                return true;
+            } catch { return false; }
+        }
+    };
+
+    const Log = {
+        push(msg) {
+            const t = new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            State.logset.unshift({ time: t, msg });
+            if (State.logset.length > CONFIG.LOG_MAX) State.logset = State.logset.slice(0, CONFIG.LOG_MAX);
+            Storage.saveAll();
+            UI.renderLogs();
+        },
+        clear() {
+            State.logset = [];
+            this.push('日志已清空');
+        }
+    };
+
+    const Undo = {
+        push(desc) {
+            State.undoStack.push({ desc, snapshot: Util.clone(State.dataset), trashSnapshot: Util.clone(State.trash) });
+            if (State.undoStack.length > CONFIG.UNDO_MAX) State.undoStack.shift();
+            UI.updateUndo();
+        },
+        pushDelete(desc, items) {
+            State.undoStack.push({ desc, type: 'delete', deletedItems: Util.clone(items) });
+            if (State.undoStack.length > CONFIG.UNDO_MAX) State.undoStack.shift();
+            UI.updateUndo();
+        },
+        async undo() {
+            if (!State.undoStack.length) return;
+            const item = State.undoStack.pop();
+            if (item.type === 'delete') {
+                const usedIds = new Set(State.dataset.map(o => o.id));
+                State.dataset.forEach(o => (o.subs || []).forEach(s => usedIds.add(s.id)));
+                item.deletedItems.forEach(d => {
+                    const order = Util.clone(d.data);
+                    order.id = Util.uniqueId(usedIds);
+                    usedIds.add(order.id);
+                    if (order.subs) {
+                        order.subs.forEach(s => {
+                            s.id = Util.uniqueId(usedIds);
+                            usedIds.add(s.id);
+                        });
+                    }
+                    State.dataset.push(order);
+                    State.trash = State.trash.filter(t => t.trashId !== d.trashId);
+                });
+                Log.push(`撤销删除: ${item.desc}`);
+            } else {
+                State.dataset = item.snapshot;
+                if (item.trashSnapshot) State.trash = item.trashSnapshot;
+                Log.push(`撤销: ${item.desc}`);
+            }
+            dataChanged();
+            UI.invalidateCache();
+            await Storage.saveAll(true);
+            UI.renderAll();
+            if (State.activeDetailId) UI.syncDetail(State.activeDetailId);
+        }
+    };
+
+    const OrderOps = {
+        moveToTrash(items) {
+            const recs = items.map(i => {
+                const trashId = Util.genId();
+                return { trashId, data: Util.clone(i), name: i.name };
+            });
+            recs.forEach(r => {
+                State.trash.push({
+                    id: r.data.id,
+                    name: r.name,
+                    data: r.data,
+                    deletedAt: new Date().toISOString(),
+                    trashId: r.trashId
+                });
+            });
+            const idsSet = new Set(items.map(i => i.id));
+            State.dataset = State.dataset.filter(i => !idsSet.has(i.id));
+            if (State.activeDetailId && idsSet.has(State.activeDetailId)) App.closeDetail();
+            dataChanged();
+            return recs;
+        },
+        restoreFromTrash(trashItems) {
+            const usedIds = new Set();
+            State.dataset.forEach(o => {
+                usedIds.add(o.id);
+                (o.subs || []).forEach(s => usedIds.add(s.id));
+            });
+            trashItems.forEach(t => {
+                let newId = Util.uniqueId(usedIds);
+                t.data.id = newId;
+                usedIds.add(newId);
+                if (t.data.subs) {
+                    t.data.subs.forEach(s => {
+                        if (usedIds.has(s.id)) {
+                            let nsid = Util.uniqueId(usedIds);
+                            usedIds.add(nsid);
+                            s.id = nsid;
+                        } else {
+                            usedIds.add(s.id);
+                        }
+                    });
+                }
+                State.dataset.push(t.data);
+            });
+            const trashIds = new Set(trashItems.map(t => t.trashId));
+            State.trash = State.trash.filter(i => !trashIds.has(i.trashId));
+            dataChanged();
+        }
+    };
+
+    const UI = {
+        _measureToken: null,
+        _lastDataVersion: -1,
+        invalidateCache() {
+            State._cacheValid = false;
+        },
+        getFiltered() {
+            if (State._cacheValid && State._cachedFiltered) return State._cachedFiltered;
+            let items = State.activeCategory ? State.dataset.filter(i => (i.category || '未分类') === State.activeCategory) : State.dataset;
+            if (State.filterOrderType) items = items.filter(i => i.orderType === State.filterOrderType);
+            if (State.filterDone) {
+                items = items.filter(i => {
+                    if (!i.subs || i.subs.length === 0) return State.filterDone !== 'done';
+                    const allDone = i.subs.every(s => s.isDone);
+                    return State.filterDone === 'done' ? allDone : !allDone;
+                });
+            }
+            if (State.filterPaid) {
+                items = items.filter(i => {
+                    if (!i.subs || i.subs.length === 0) return State.filterPaid !== 'paid';
+                    const allPaid = i.subs.every(s => s.isPaid);
+                    return State.filterPaid === 'paid' ? allPaid : !allPaid;
+                });
+            }
+            if (State.currentSearchKeyword) {
+                const kw = State.currentSearchKeyword.toLowerCase();
+                items = items.filter(i =>
+                    i.name.toLowerCase().includes(kw) ||
+                    (i.category || '').toLowerCase().includes(kw) ||
+                    (i.source || '').toLowerCase().includes(kw) ||
+                    (i.subs || []).some(s => s.name.toLowerCase().includes(kw) || (s.note || '').toLowerCase().includes(kw))
+                );
+            }
+            State._cachedFiltered = items;
+            State._cacheValid = true;
+            return items;
+        },
+        renderAll() {
+            this.invalidateCache();
+            const f = this.getFiltered();
+            this.renderSidebar();
+            this.renderCards(f);
+            this.renderStats(f);
+            this.renderLogs();
+            this.updateUndo();
+            this.updateBatch(f);
+            this.updateDonut(f);
+            this.renderFilters();
+            this.updateStatActive();
+        },
+        renderSidebar() {
+            const cats = {};
+            State.dataset.forEach(i => { const c = i.category || '未分类'; cats[c] = (cats[c] || 0) + 1; });
+            if (State.activeCategory && !cats[State.activeCategory]) State.activeCategory = '';
+            const list = document.getElementById('sidebarList');
+            list.innerHTML = '';
+            const parent = document.createElement('li');
+            parent.className = `sidebar-item parent ${!State.activeCategory ? 'active' : ''}`;
+            parent.id = 'parentAll';
+            parent.innerHTML = `<span>📁 全部订单 (${State.dataset.length})</span><span class="count">${State.dataset.length}</span>`;
+            parent.onclick = () => App.toggleSidebar();
+            list.appendChild(parent);
+            const subDiv = document.createElement('div');
+            subDiv.id = 'subCats';
+            let expanded = false;
+            try {
+                expanded = sessionStorage.getItem(CONFIG.SIDEBAR_EXPANDED_KEY) === '1';
+            } catch (e) {
+                expanded = false;
+            }
+            subDiv.style.display = expanded ? 'block' : 'none';
+            Object.keys(cats).sort().forEach(c => {
+                const li = document.createElement('li');
+                li.className = `sidebar-item sidebar-sub ${State.activeCategory === c ? 'active' : ''}`;
+                li.dataset.category = c;
+                li.innerHTML = `<span>🎮 ${Util.esc(c)}</span><span class="count">${cats[c]}</span>`;
+                li.onclick = (e) => { e.stopPropagation(); App.filterCategory(c); };
+                subDiv.appendChild(li);
+            });
+            list.appendChild(subDiv);
+        },
+        renderCards(filtered) {
+            const container = document.getElementById('cardDeckContainer');
+            const wrapper = document.getElementById('deckWrapper');
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>暂无订单，点击「记新单」开始</p></div>';
+                State.itemHeights = [];
+                this._lastDataVersion = State._dataVersion;
+                return;
+            }
+            if (this._lastDataVersion !== State._dataVersion || State.itemHeights.length !== filtered.length) {
+                State.itemHeights = [];
+                this._lastDataVersion = State._dataVersion;
+            }
+            const wrapperHeight = wrapper.clientHeight || window.innerHeight;
+            const scrollTop = wrapper.scrollTop;
+            let offsets = [0];
+            for (let i = 0; i < filtered.length; i++) {
+                let h = State.itemHeights[i] || CONFIG.ITEM_HEIGHT;
+                offsets.push(offsets[i] + h);
+            }
+            let startIdx = 0, lo = 0, hi = filtered.length - 1;
+            while (lo <= hi) {
+                let mid = (lo + hi) >> 1;
+                if (offsets[mid] <= scrollTop) {
+                    startIdx = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            startIdx = Math.max(0, startIdx - CONFIG.BUFFER_SIZE);
+            const visibleCount = Math.ceil(wrapperHeight / CONFIG.ITEM_HEIGHT) + CONFIG.BUFFER_SIZE * 2;
+            const endIdx = Math.min(filtered.length, startIdx + visibleCount);
+            State.visibleStart = startIdx;
+            State.visibleEnd = endIdx;
+
+            let html = '';
+            const topSpacerHeight = offsets[startIdx];
+            html += `<div class="virtual-spacer" style="height:${topSpacerHeight}px;"></div>`;
+            html += filtered.slice(startIdx, endIdx).map(item => this.buildRow(item)).join('');
+            const bottomSpacerHeight = offsets[filtered.length] - offsets[endIdx];
+            html += `<div class="virtual-spacer" style="height:${bottomSpacerHeight}px;"></div>`;
+
+            const savedScrollTop = wrapper.scrollTop;
+            State._skipScroll = true;
+            container.innerHTML = html;
+            wrapper.scrollTop = savedScrollTop;
+
+            const currentToken = {};
+            this._measureToken = currentToken;
+            requestAnimationFrame(() => {
+                if (this._measureToken !== currentToken) return;
+                State._skipScroll = false;
+                const cards = container.querySelectorAll('.swipe-item');
+                let heights = [];
+                cards.forEach(card => heights.push(card.getBoundingClientRect().height));
+                for (let i = 0; i < cards.length; i++) {
+                    const idx = startIdx + i;
+                    if (idx < filtered.length) State.itemHeights[idx] = heights[i];
+                }
+                for (let i = 0; i < filtered.length; i++) {
+                    if (State.itemHeights[i] === undefined) State.itemHeights[i] = CONFIG.ITEM_HEIGHT;
+                }
+                const avg = State.itemHeights.reduce((a,b) => a+b, 0) / State.itemHeights.length;
+                State.itemHeight = avg || CONFIG.ITEM_HEIGHT;
+            });
+
+            App.initSwipeItems();
+        },            buildRow(item) {
+                const allDone = item.subs.length > 0 && item.subs.every(s => s.isDone);
+                const allPaid = item.subs.length > 0 && item.subs.every(s => s.isPaid);
+                let total = 0;
+                item.subs.forEach(s => { total += Util.cents(s.amount); });
+                const checked = State.selectedIds.has(item.id) ? 'checked' : '';
+                const kw = State.currentSearchKeyword;
+                const typeBadge = item.orderType === 'boost' ? 'badge-order-type boost' : 'badge-order-type rent';
+                const typeLabel = item.orderType === 'boost' ? '代练' : '租号';
+                return `<div class="swipe-item" data-id="${Util.escAttr(item.id)}">
+                    <div class="swipe-item-inner">
+                        <span class="compact-row-check" onclick="event.stopPropagation();">
+                            <input type="checkbox" class="order-checkbox" data-id="${Util.escAttr(item.id)}" ${checked} onchange="App.toggleItemSelect(this)" aria-label="选择订单">
+                        </span>
+                        <div class="compact-row-content" data-action="openDetail" data-oid="${Util.escAttr(item.id)}">
+                            <div class="compact-row-title">
+                                <span class="compact-row-cat">${Util.highlight(item.category || '通用', kw)}</span>
+                                ${Util.highlight(item.name, kw)}
+                            </div>
+                            <div class="compact-row-meta">
+                                <span class="${typeBadge}">${typeLabel}</span>
+                                <span class="compact-row-date">📅 ${Util.esc(item.playDate ? item.playDate.slice(5) : '')}</span>
+                                <span class="compact-row-amount">${Util.fmtMoney(Util.fromCents(total))}</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:4px; align-items:center;" onclick="event.stopPropagation();">
+                            <button type="button" class="status-btn ${allDone ? 'done' : 'progress'}" onclick="App.quickToggleDone('${Util.escAttr(item.id)}')">${allDone ? '已完结' : '打单中'}</button>
+                            <button type="button" class="status-btn ${allPaid ? 'paid' : 'unpaid'}" onclick="App.quickTogglePaid('${Util.escAttr(item.id)}')">${allPaid ? '已结清' : '待平账'}</button>
+                        </div>
+                    </div>
+                    <div class="swipe-item-actions">
+                        <button type="button" class="swipe-action-btn edit" data-action="edit" data-oid="${Util.escAttr(item.id)}">编辑</button>
+                        <button type="button" class="swipe-action-btn delete" data-action="delete" data-oid="${Util.escAttr(item.id)}">删除</button>
+                    </div>
+                </div>`;
+            },
+            renderStats(filtered) {
+                const total = filtered.length;
+                const done = filtered.filter(i => i.subs.length && i.subs.every(s => s.isDone)).length;
+                let paid = 0, boost = 0, rent = 0, totalCents = 0;
+                filtered.forEach(i => {
+                    i.subs.forEach(s => {
+                        const c = Util.cents(s.amount);
+                        totalCents += c;
+                        if (s.isPaid) {
+                            paid += c;
+                            if (i.orderType === 'rent') rent += c;
+                            else if (i.orderType === 'boost') boost += c;
+                        }
+                    });
+                });
+                document.getElementById('statTotal').textContent = total;
+                document.getElementById('statDone').textContent = done;
+                document.getElementById('statPaidAmount').textContent = Util.fmtMoney(Util.fromCents(paid));
+                document.getElementById('statBoostPaidAmount').textContent = Util.fmtMoney(Util.fromCents(boost));
+                document.getElementById('statRentPaidAmount').textContent = Util.fmtMoney(Util.fromCents(rent));
+                document.getElementById('statProgress').textContent = totalCents ? Math.round(paid / totalCents * 100) + '%' : '0%';
+            },
+            renderLogs() {
+                const list = document.getElementById('logList');
+                list.innerHTML = '';
+                State.logset.forEach(l => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'padding:6px 8px;background:#f8fafc;border-radius:6px;border-left:2px solid var(--primary);';
+                    div.innerHTML = `<div style="color:var(--text-muted);font-size:10px;">${Util.esc(l.time)}</div><div style="color:var(--text-secondary);">${Util.esc(l.msg)}</div>`;
+                    list.appendChild(div);
+                });
+            },
+            updateUndo() {
+                const btn = document.getElementById('bbUndo');
+                if (!btn) return;
+                const hasUndo = State.undoStack.length > 0;
+                btn.disabled = !hasUndo;
+                if (hasUndo) {
+                    const last = State.undoStack[State.undoStack.length - 1];
+                    btn.innerHTML = `↩ 撤销 ${last.desc ? '(' + last.desc + ')' : ''}`;
+                } else {
+                    btn.innerHTML = '↩ 撤销';
+                }
+            },
+            updateBatch(filtered) {
+                const bar = document.getElementById('batchBar');
+                const has = State.selectedIds.size > 0;
+                bar.classList.toggle('hidden', !has);
+                if (has) {
+                    const cb = document.getElementById('selectAllCheckbox');
+                    if (cb) cb.checked = filtered.length > 0 && filtered.every(i => State.selectedIds.has(i.id));
+                }
+            },
+            updateDonut(filtered) {
+                const done = filtered.filter(i => i.subs.length && i.subs.every(s => s.isDone)).length;
+                const pct = filtered.length ? Math.round(done / filtered.length * 100) : 0;
+                const c = 2 * Math.PI * 20;
+                const dash = (pct / 100) * c;
+                document.getElementById('donutChart').innerHTML = `<svg viewBox="0 0 50 50"><circle cx="25" cy="25" r="20" fill="none" stroke="var(--divider)" stroke-width="5"/><circle cx="25" cy="25" r="20" fill="none" stroke="var(--primary)" stroke-width="5" stroke-dasharray="${dash} ${c - dash}" stroke-linecap="round" transform="rotate(-90 25 25)"/><text x="25" y="25" fill="var(--text)" font-size="10" font-weight="700" text-anchor="middle" dominant-baseline="central">${pct}%</text></svg>`;
+            },
+            renderFilters() {
+                const cont = document.getElementById('activeFilters');
+                const tags = [];
+                if (State.filterOrderType) tags.push(`类型: ${State.filterOrderType === 'boost' ? '代练' : '租号'}`);
+                if (State.filterDone) tags.push(`状态: ${State.filterDone === 'done' ? '已完成' : '进行中'}`);
+                if (State.filterPaid) tags.push(`收款: ${State.filterPaid === 'paid' ? '已收款' : '未收款'}`);
+                if (State.currentSearchKeyword) tags.push(`搜索: ${State.currentSearchKeyword}`);
+                cont.innerHTML = tags.map(t => `<span class="filter-tag" data-type="${t.split(':')[0]}">${Util.esc(t)}</span>`).join('');
+                cont.querySelectorAll('.filter-tag').forEach(tag => {
+                    tag.onclick = () => App.clearSingleFilter(tag.dataset.type);
+                });
+            },
+            updateStatActive() {
+                document.querySelectorAll('.stat-card').forEach(el => {
+                    const f = el.dataset.filter;
+                    let active = false;
+                    if (f === 'all') active = !State.filterOrderType && !State.filterDone && !State.filterPaid && !State.activeCategory;
+                    else if (f === 'done') active = State.filterDone === 'done';
+                    else if (f === 'paid') active = State.filterPaid === 'paid';
+                    else if (f === 'boost') active = State.filterOrderType === 'boost';
+                    else if (f === 'rent') active = State.filterOrderType === 'rent';
+                    el.classList.toggle('active-filter', active);
+                });
+            },
+            syncDetail(id) {
+                const item = State.dataset.find(i => i.id === id);
+                if (!item) { document.getElementById('detailSheetOverlay').classList.remove('active'); return; }
+                document.getElementById('dsTitle').textContent = item.name;
+                const type = item.orderType === 'rent' ? '租号' : '代练';
+                document.getElementById('dsTags').innerHTML = `<span class="badge badge-cat">${Util.esc(item.category)}</span><span class="badge badge-order-type ${item.orderType}">${type}</span><span class="badge badge-src">${Util.esc(item.source)}</span><span class="badge" style="background:var(--green-bg);color:var(--green-text);">📅 ${item.playDate}</span>`;
+                const body = document.getElementById('dsBody');
+                if (!item.subs || !item.subs.length) {
+                    body.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">暂无子任务</div>';
+                    return;
+                }
+                const grid = document.createElement('div');
+                grid.className = 'sub-grid';
+                item.subs.forEach(s => {
+                    const pct = s.target ? Math.min(Math.round(s.current / s.target * 100), 100) : 0;
+                    let barHtml = '';
+                    if (s.target > 0) {
+                        barHtml = `<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%"></div></div>`;
+                    } else {
+                        barHtml = s.isDone
+                            ? `<div class="progress-bar-bg"><div class="progress-bar-fill completed-no-target"></div></div>`
+                            : `<div class="progress-bar-bg"><div class="progress-bar-fill empty"></div></div>`;
+                    }
+                    const section = document.createElement('section');
+                    section.className = 'sub-card';
+                    section.dataset.sid = s.id;
+                    section.innerHTML = `
+                        <header class="sub-card-header"><h3 class="sub-card-title">${Util.esc(s.name)}</h3><div style="display:flex;gap:8px;"><button type="button" class="status-btn ${s.isDone ? 'done' : 'progress'}" data-action="subDone" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}">${s.isDone ? '已完成' : '进行中'}</button>
+                                        <button type="button" class="status-btn ${s.isPaid ? 'paid' : 'unpaid'}" data-action="subPaid" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}">${s.isPaid ? '已收款' : '未收款'}</button></div></header>
+                        <div class="sub-card-progress-row"><div class="progress-metric-box"><span class="metric-label">进度</span><span>${s.target > 0 ? `<button class="btn" data-action="stepProg" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}" data-step="-1">-</button><b>${s.current}</b>/${s.target}<button class="btn btn-primary" data-action="stepProg" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}" data-step="1">+</button>` : `<button class="btn" data-action="stepProg" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}" data-step="-1">-</button><b>${s.current}</b><button class="btn btn-primary" data-action="stepProg" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}" data-step="1">+</button>`}</span></div>${barHtml}</div>
+                        <div class="sub-card-footer"><span class="sub-card-pay-status ${s.isPaid ? 'paid' : 'unpaid'}">${s.isPaid ? '💰 已结清' : '⏳ 待结算'}</span>${s.target > 0 ? `<span>${pct}%</span>` : ''}</div>
+                        ${s.note ? `<div class="sub-note">💡 ${Util.esc(s.note)}</div>` : ''}
+                        <div class="sub-card-amount-row"><span class="amount-label">金额</span><div class="amount-input-wrapper"><span class="amount-prefix-symbol">¥</span><input class="sub-amount-field" value="${s.amount}" step="0.01" inputmode="decimal" data-action="updateAmt" data-oid="${Util.escAttr(item.id)}" data-sid="${Util.escAttr(s.id)}"></div></div>
+                    `;
+                    grid.appendChild(section);
+                });
+                body.innerHTML = '';
+                body.appendChild(grid);
+            }
+        };
+
+        const App = {
+            resizeTimer: null,
+            searchTimer: null,
+            searchHideTimer: null,
+            _amtUpdating: false,
+            _safeAreaInterval: null,
+            isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0,
+            async init() {
+                try {
+                    await IDBStorage.init();
+                    console.log('IndexedDB initialized');
+                } catch (e) {
+                    console.error('IndexedDB init failed, falling back to memory only', e);
+                    State.storageAvailable = false;
+                }
+
+                State.darkMode = await Storage.get(CONFIG.DARK_KEY, false);
+                State.theme = await Storage.get(CONFIG.THEME_KEY, '');
+                State.compactLayout = await Storage.get(CONFIG.COMPACT_KEY, false);
+                document.body.classList.toggle('dark', State.darkMode);
+                if (State.theme && State.darkMode) document.body.classList.add(State.theme);
+                document.body.classList.toggle('compact-layout', State.compactLayout);
+                document.getElementById('darkModeBtn').innerHTML = State.darkMode ? '☀️ 亮色模式' : '🌓 暗色模式';
+                document.getElementById('compactLayoutBtn').innerHTML = State.compactLayout ? '📏 舒适模式' : '📏 紧凑模式';
+
+                State.searchHistory = await Storage.get(CONFIG.SEARCH_HISTORY_KEY, []);
+                State.dataset = (await Storage.get('dataset', [])).filter(Util.validate);
+                State.logset = await Storage.get(CONFIG.LOG_KEY, []);
+                State.trash = await Storage.get(CONFIG.TRASH_KEY, []);
+
+                if (!State.dataset.length && !(await Storage.get(CONFIG.FIRST_RUN_KEY))) {
+                    const today = Util.getLocalDateStr();
+                    const yest = Util.getLocalDateStr(new Date(Date.now() - 864e5));
+                    State.dataset = [
+                        { id: Util.genId(), name: '巅峰赛1800分', category: '王者荣耀', source: '安卓Q区', orderType: 'boost', playDate: today, subs: [{ id: Util.genId(), name: '打单', current: 0, target: 0, isDone: true, isPaid: true, amount: 60, note: '好评' }] },
+                        { id: Util.genId(), name: '定级赛10胜', category: 'LOL', source: '艾欧尼亚', orderType: 'boost', playDate: yest, subs: [{ id: Util.genId(), name: '打单', current: 0, target: 0, isDone: true, isPaid: false, amount: 30, note: '' }] }
+                    ];
+                    await Storage.set(CONFIG.FIRST_RUN_KEY, '1');
+                    await Storage.saveAll(true);
+                    Log.push('初始化完成');
+                }
+                dataChanged();
+                UI.renderAll();
+
+                const wrapper = document.getElementById('deckWrapper');
+                let lastY = 0;
+                let scrollTicking = false;
+                wrapper.addEventListener('scroll', () => {
+                    const st = wrapper.scrollTop;
+                    if (st > lastY + 10) {
+                        document.getElementById('topbar').classList.add('hidden');
+                        if (!State.bottomBarCollapsed) document.getElementById('bottomBar').classList.add('hidden');
+                    } else if (st < lastY - 5 || st < 10) {
+                        document.getElementById('topbar').classList.remove('hidden');
+                        if (!State.bottomBarCollapsed) document.getElementById('bottomBar').classList.remove('hidden');
+                    }
+                    lastY = st;
+
+                    if (!scrollTicking && !State._skipScroll) {
+                        window.requestAnimationFrame(() => {
+                            UI.renderCards(UI.getFiltered());
+                            scrollTicking = false;
+                        });
+                        scrollTicking = true;
+                    }
+                }, { passive: true });
+
+                if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+                    window.visualViewport.addEventListener('resize', () => {
+                        const vh = window.visualViewport.height;
+                        document.documentElement.style.setProperty('--app-real-height', `${vh}px`);
+                    });
+                }
+
+                document.getElementById('cardDeckContainer').addEventListener('click', e => {
+                    const action = e.target.closest('[data-action]');
+                    if (!action) return;
+                    const type = action.dataset.action;
+                    const oid = action.dataset.oid;
+                    if (type === 'toggleDone') this.toggleAllDone(oid, e);
+                    if (type === 'togglePaid') this.toggleAllPaid(oid, e);
+                    if (type === 'edit') this.openEdit(oid);
+                    if (type === 'delete') this.confirmDelete(oid, e);
+                    if (type === 'openDetail') {
+                        if (e.target.closest('button[data-action],.order-checkbox,[data-action]')) return;
+                        this.openDetail(oid);
+                    }
+                });
+
+                const dsBody = document.getElementById('dsBody');
+                dsBody.addEventListener('click', e => {
+                    const action = e.target.closest('[data-action]');
+                    if (!action) return;
+                    const type = action.dataset.action;
+                    const oid = action.dataset.oid;
+                    const sid = action.dataset.sid;
+                    if (type === 'subDone') this.toggleSubDone(oid, sid, action);
+                    if (type === 'subPaid') this.toggleSubPaid(oid, sid, action);
+                    if (type === 'stepProg') this.stepProg(oid, sid, parseInt(action.dataset.step));
+                });
+                dsBody.addEventListener('change', e => {
+                    const action = e.target.closest('[data-action]');
+                    if (!action || this._amtUpdating) return;
+                    if (action.dataset.action === 'updateAmt') {
+                        this.updateAmt(action.dataset.oid, action.dataset.sid, action.value, action);
+                    }
+                });
+                dsBody.addEventListener('blur', e => {
+                    const action = e.target.closest('[data-action]');
+                    if (!action || this._amtUpdating) return;
+                    if (action.dataset.action === 'updateAmt') {
+                        this.updateAmt(action.dataset.oid, action.dataset.sid, action.value, action);
+                    }
+                }, true);
+
+                document.getElementById('debtModalBody').addEventListener('click', e => {
+                    const btn = e.target.closest('[data-action="settleDebt"]');
+                    if (btn) {
+                        this.settleDebt(btn.dataset.oid, btn.dataset.sid);
+                    }
+                });
+
+                document.getElementById('trashModalBody').addEventListener('click', e => {
+                    const restore = e.target.closest('[data-action="restoreTrash"]');
+                    const del = e.target.closest('[data-action="permanentDeleteTrash"]');
+                    if (restore) this.restoreTrash(restore.dataset.tid);
+                    if (del) this.permanentDeleteTrash(del.dataset.tid);
+                });
+
+                const histContainer = document.getElementById('searchHistory');
+                histContainer.addEventListener('click', e => {
+                    clearTimeout(App.searchHideTimer);
+                    const removeBtn = e.target.closest('.remove');
+                    if (removeBtn) {
+                        const item = removeBtn.closest('.search-history-item');
+                        if (item) this.removeSearchHistory(item.dataset.kw);
+                        return;
+                    }
+                    const item = e.target.closest('.search-history-item');
+                    if (!item) return;
+                    document.getElementById('globalSearch').value = item.dataset.kw;
+                    this.handleSearchInput();
+                });
+
+                this.initSwipeHandler();
+                this.setSafeArea();
+
+                window.addEventListener('resize', () => {
+                    clearTimeout(this.resizeTimer);
+                    this.resizeTimer = setTimeout(() => {
+                        const d = document.getElementById('leftDrawer');
+                        if (window.innerWidth > 600) d.classList.remove('active-mobile');
+                        else d.classList.remove('collapsed');
+                        document.getElementById('drawerBackdrop').classList.toggle('active', d.classList.contains('active-mobile') || document.getElementById('logDrawer').classList.contains('active'));
+                        UI.invalidateCache();
+                        UI.renderCards(UI.getFiltered());
+                    }, 150);
+                });
+
+                document.addEventListener('keydown', e => {
+                    if (e.key === 'Escape') {
+                        if (document.getElementById('confirmModal').classList.contains('active')) this.closeConfirm(false);
+                        else { this.closeModal(); this.closeDetail(); this.closeImportModal(); }
+                    }
+                    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+                        e.preventDefault();
+                        document.getElementById('globalSearch').focus();
+                    }
+                    if (e.key.toLowerCase() === 'n' && !e.ctrlKey && !e.metaKey && !e.altKey && document.activeElement === document.body) {
+                        e.preventDefault();
+                        this.openCreateModal();
+                    }
+                });
+
+                document.addEventListener('contextmenu', e => {
+                    const t = e.target.closest('.swipe-item');
+                    if (!t) return;
+                    e.preventDefault();
+                    const menu = document.getElementById('contextMenu');
+                    const id = t.dataset.id;
+                    menu.innerHTML = '';
+                    const actions = [
+                        { label: '编辑', fn: () => this.openEdit(id) },
+                        { label: '详情', fn: () => this.openDetail(id) },
+                        { label: '删除', fn: () => this.confirmDelete(id, e) }
+                    ];
+                    actions.forEach(a => {
+                        const div = document.createElement('div');
+                        div.className = 'context-menu-item';
+                        div.textContent = a.label;
+                        div.onclick = () => { a.fn(); menu.style.display = 'none'; };
+                        menu.appendChild(div);
+                    });
+                    menu.style.display = 'block';
+                    menu.style.left = e.pageX + 'px';
+                    menu.style.top = e.pageY + 'px';
+                });
+                document.addEventListener('click', e => {
+                    if (!e.target.closest('#contextMenu')) document.getElementById('contextMenu').style.display = 'none';
+                });
+
+                window.addEventListener('beforeunload', () => {
+                    if (this._safeAreaInterval) clearInterval(this._safeAreaInterval);
+                });
+
+                this.bindGlobalEvents();
+            },
+            bindGlobalEvents() {
+                window.addEventListener('resize', () => UI.renderCards(UI.getFiltered()), { passive: true });
+            },
+            setSafeArea() {
+                if (this._safeAreaInterval) {
+                    clearInterval(this._safeAreaInterval);
+                    this._safeAreaInterval = null;
+                }
+                const updateSafe = () => {
+                    const root = document.documentElement;
+                    let safeBottom = getComputedStyle(root).getPropertyValue('--safe-bottom').trim();
+                    if (!safeBottom || safeBottom === '0px' || safeBottom === '') {
+                        let defaultSafe = 20;
+                        if (window.visualViewport && window.innerHeight) {
+                            defaultSafe = Math.max(20, window.innerHeight - window.visualViewport.height);
+                        }
+                        root.style.setProperty('--safe-bottom', defaultSafe + 'px');
+                    }
+                };
+                updateSafe();
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', updateSafe);
+                } else {
+                    this._safeAreaInterval = setInterval(updateSafe, 2000);
+                }
+            },
+            async tryRecoverStorage() {
+                if (await Storage.tryRecover()) {
+                    await Storage.saveAll(true);
+                    Log.push('存储空间恢复，已重试保存');
+                    alert('存储空间已恢复，数据可以继续保存了');
+                } else {
+                    alert('存储空间仍然不足，请清理浏览器数据或导出备份');
+                }
+            },
+            toggleLeftDrawer() {
+                const d = document.getElementById('leftDrawer');
+                if (window.innerWidth <= 600) {
+                    d.classList.toggle('active-mobile');
+                    document.getElementById('drawerBackdrop').classList.toggle('active', d.classList.contains('active-mobile'));
+                } else {
+                    d.classList.toggle('collapsed');
+                }
+            },
+            closeAllDrawers() {
+                document.getElementById('leftDrawer').classList.remove('active-mobile');
+                document.getElementById('logDrawer').classList.remove('active');
+                document.getElementById('drawerBackdrop').classList.remove('active');
+            },
+            toggleRightDrawer(show) {
+                document.getElementById('logDrawer').classList.toggle('active', show);
+                document.getElementById('drawerBackdrop').classList.toggle('active', show);
+            },
+            toggleBottomBar() {
+                State.bottomBarCollapsed = !State.bottomBarCollapsed;
+                const b = document.getElementById('bottomBar'), f = document.getElementById('bottomBarToggleFloat');
+                if (State.bottomBarCollapsed) { 
+                    b.classList.add('hidden'); 
+                    f.classList.add('raised');
+                    f.classList.add('visible');
+                } else { 
+                    b.classList.remove('hidden'); 
+                    f.classList.remove('raised');
+                    f.classList.remove('visible');
+                }
+            },
+            async toggleDarkMode() {
+                State.darkMode = !State.darkMode;
+                document.body.classList.toggle('dark', State.darkMode);
+                await Storage.set(CONFIG.DARK_KEY, State.darkMode);
+                document.getElementById('darkModeBtn').innerHTML = State.darkMode ? '☀️ 亮色模式' : '🌓 暗色模式';
+                if (!State.darkMode) this.setTheme('');
+            },
+            async setTheme(themeName) {
+                State.theme = themeName || '';
+                CONFIG.THEMES.forEach(t => { if(t) document.body.classList.remove(t); });
+                if (State.theme && State.darkMode) document.body.classList.add(State.theme);
+                await Storage.set(CONFIG.THEME_KEY, State.theme);
+            },
+            async cycleTheme() {
+                if (!State.darkMode) { await this.toggleDarkMode(); }
+                const idx = CONFIG.THEMES.indexOf(State.theme);
+                const next = CONFIG.THEMES[(idx + 1) % CONFIG.THEMES.length];
+                await this.setTheme(next);
+                Log.push(`切换主题: ${next || '默认'}`);
+            },
+            async toggleCompactLayout() {
+                State.compactLayout = !State.compactLayout;
+                document.body.classList.toggle('compact-layout', State.compactLayout);
+                await Storage.set(CONFIG.COMPACT_KEY, State.compactLayout);
+                document.getElementById('compactLayoutBtn').innerHTML = State.compactLayout ? '📏 舒适模式' : '📏 紧凑模式';
+                State.itemHeight = CONFIG.ITEM_HEIGHT;
+                dataChanged();
+                UI.renderAll();
+            },
+            openDetail(id) {
+                State.activeDetailId = id;
+                UI.syncDetail(id);
+                document.getElementById('detailSheetOverlay').classList.add('active');
+            },
+            closeDetail() {
+                document.querySelectorAll('.sub-amount-field').forEach(inp => inp.blur());
+                document.getElementById('detailSheetOverlay').classList.remove('active');
+                State.activeDetailId = null;
+            },
+            filterCategory(cat) {
+                State.activeCategory = cat;
+                State.selectedIds.clear();
+                State.visibleStart = 0; State.visibleEnd = 0;
+                UI.renderAll();
+                if (window.innerWidth <= 600) this.closeAllDrawers();
+            },
+            toggleSidebar() {
+                const sub = document.getElementById('subCats');
+                const exp = sub.style.display === 'block';
+                sub.style.display = exp ? 'none' : 'block';
+                try {
+                    sessionStorage.setItem(CONFIG.SIDEBAR_EXPANDED_KEY, exp ? '0' : '1');
+                } catch (e) {}
+                this.filterCategory('');
+            },
+            addNewGame() {
+                const n = prompt('请输入游戏名称：');
+                if (n && n.trim()) { this.openCreateModal(); document.getElementById('fCategory').value = n.trim(); }
+            },
+            applyFilters() {
+                State.filterOrderType = document.getElementById('filterOrderType').value;
+                State.filterDone = document.getElementById('filterDone').value;
+                State.filterPaid = document.getElementById('filterPaid').value;
+                State.selectedIds.clear();
+                State.visibleStart = 0; State.visibleEnd = 0;
+                UI.renderAll();
+            },
+            quickFilter(type, done, paid) {
+                document.getElementById('filterOrderType').value = type;
+                document.getElementById('filterDone').value = done;
+                document.getElementById('filterPaid').value = paid;
+                this.applyFilters();
+            },
+            clearSingleFilter(type) {
+                if (type === '类型') { State.filterOrderType = ''; document.getElementById('filterOrderType').value = ''; }
+                if (type === '状态') { State.filterDone = ''; document.getElementById('filterDone').value = ''; }
+                if (type === '收款') { State.filterPaid = ''; document.getElementById('filterPaid').value = ''; }
+                if (type === '搜索') this.clearSearch();
+                this.applyFilters();
+            },
+            handleSearchInput() {
+                clearTimeout(this.searchTimer);
+                this.searchTimer = setTimeout(() => {
+                    const raw = document.getElementById('globalSearch').value.trim();
+                    State.currentSearchKeyword = raw.toLowerCase();
+                    document.getElementById('searchClear').classList.toggle('visible', !!raw);
+                    if (raw) {
+                        const kw = raw.toLowerCase();
+                        if (!State.searchHistory.some(h => h.toLowerCase() === kw)) {
+                            State.searchHistory.unshift(raw);
+                            if (State.searchHistory.length > 10) State.searchHistory.pop();
+                            Storage.set(CONFIG.SEARCH_HISTORY_KEY, State.searchHistory);
+                        }
+                    }
+                    State.selectedIds.clear();
+                    State.visibleStart = 0; State.visibleEnd = 0;
+                    UI.renderAll();
+                }, 200);
+            },
+            clearSearch() {
+                document.getElementById('globalSearch').value = '';
+                State.currentSearchKeyword = '';
+                document.getElementById('searchClear').classList.remove('visible');
+                State.selectedIds.clear();
+                State.visibleStart = 0; State.visibleEnd = 0;
+                UI.renderAll();
+            },
+            showSearchHistory() {
+                clearTimeout(this.searchHideTimer);
+                const cont = document.getElementById('searchHistory');
+                if (!State.searchHistory.length) { cont.classList.remove('active'); return; }
+                cont.innerHTML = State.searchHistory.map(k => `
+                    <div class="search-history-item" data-kw="${Util.escAttr(k)}">
+                        <span>${Util.esc(k)}</span>
+                        <span class="remove">✕</span>
+                    </div>
+                `).join('');
+                cont.classList.add('active');
+            },
+            hideSearchHistory() {
+                this.searchHideTimer = setTimeout(() => {
+                    document.getElementById('searchHistory').classList.remove('active');
+                }, 300);
+            },
+            removeSearchHistory(kw) {
+                State.searchHistory = State.searchHistory.filter(k => k !== kw);
+                Storage.set(CONFIG.SEARCH_HISTORY_KEY, State.searchHistory);
+                this.showSearchHistory();
+            },
+            toggleItemSelect(cb) {
+                const id = cb.dataset.id;
+                if (cb.checked) State.selectedIds.add(id);
+                else State.selectedIds.delete(id);
+                UI.updateBatch(UI.getFiltered());
+            },
+            toggleSelectAll() {
+                const cb = document.getElementById('selectAllCheckbox');
+                const items = UI.getFiltered();
+                if (cb.checked) items.forEach(i => State.selectedIds.add(i.id));
+                else State.selectedIds.clear();
+                document.querySelectorAll('.order-checkbox[data-id]').forEach(c => c.checked = State.selectedIds.has(c.dataset.id));
+                UI.updateBatch(items);
+            },
+            batchDelete() {
+                const ids = new Set(State.selectedIds);
+                if (!ids.size) return;
+                const toDelete = UI.getFiltered().filter(i => ids.has(i.id));
+                if (!toDelete.length) return;
+                this.showConfirm(`确定删除选中的 ${toDelete.length} 个订单？`, async () => {
+                    const recs = OrderOps.moveToTrash(toDelete);
+                    State.selectedIds.clear();
+                    Undo.pushDelete(`批量删除 ${recs.length} 个订单`, recs);
+                    Log.push(`批量删除 ${recs.length} 个订单`);
+                    await Storage.saveAll(true);
+                    UI.renderAll();
+                });
+            },
+            deleteAllFiltered() {
+                const items = UI.getFiltered();
+                if (!items.length) return;
+                this.showConfirm(`确定删除当前全部 ${items.length} 个订单？`, async () => {
+                    const recs = OrderOps.moveToTrash(items);
+                    State.selectedIds.clear();
+                    Undo.pushDelete(`全删当前 ${recs.length} 个订单`, recs);
+                    Log.push(`全删当前 ${recs.length} 个订单`);
+                    await Storage.saveAll(true);
+                    UI.renderAll();
+                });
+            },
+            batchMarkDone(done) {
+                const ids = new Set(State.selectedIds);
+                const filtered = UI.getFiltered().filter(i => ids.has(i.id));
+                if (filtered.length === 0) return;
+                Undo.push(`批量标记${done ? '完成' : '未完成'}`);
+                filtered.forEach(i => {
+                    i.subs.forEach(s => {
+                        s.isDone = done;
+                        if (done) s.current = s.target;
+                    });
+                });
+                Log.push(`批量设置 ${filtered.length} 个订单为${done ? '已完成' : '进行中'}`);
+                dataChanged();
+                Storage.saveAll();
+                UI.renderAll();
+            },
+            batchMarkPaid(paid) {
+                const ids = new Set(State.selectedIds);
+                const filtered = UI.getFiltered().filter(i => ids.has(i.id));
+                if (filtered.length === 0) return;
+                Undo.push(`批量标记${paid ? '已收款' : '未收款'}`);
+                filtered.forEach(i => { i.subs.forEach(s => s.isPaid = paid); });
+                Log.push(`批量设置 ${filtered.length} 个订单为${paid ? '已收款' : '未收款'}`);
+                dataChanged();
+                Storage.saveAll();
+                UI.renderAll();
+            },
+            exportSelected() {
+                if (!State.selectedIds.size) { alert('请先选择要导出的订单'); return; }
+                const items = State.dataset.filter(i => State.selectedIds.has(i.id));
+                const blob = new Blob([JSON.stringify({
+                    version: CONFIG.DATA_VERSION,
+                    exportDate: new Date().toISOString(),
+                    dataset: items,
+                    logset: [],
+                    trash: []
+                }, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `选中备份_${Util.getLocalDateStr()}.json`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            },
+            async toggleAllDone(id, e) {
+                e.stopPropagation();
+                const it = State.dataset.find(i => i.id === id);
+                if (!it || !it.subs.length) return;
+                Undo.push('切换完成状态');
+                const allDone = it.subs.every(s => s.isDone);
+                it.subs.forEach(s => {
+                    s.isDone = !allDone;
+                    if (s.isDone) s.current = s.target;
+                });
+                Log.push(`状态切换: ${it.name}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.invalidateCache();
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+                UI.updateDonut(UI.getFiltered());
+            },
+            async toggleAllPaid(id, e) {
+                e.stopPropagation();
+                const it = State.dataset.find(i => i.id === id);
+                if (!it || !it.subs.length) return;
+                Undo.push('切换收款状态');
+                const ap = it.subs.every(s => s.isPaid);
+                it.subs.forEach(s => s.isPaid = !ap);
+                Log.push(`收款切换: ${it.name}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.invalidateCache();
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+            },
+            quickToggleDone(id) {
+                const item = State.dataset.find(o => o.id === id);
+                if (!item || !item.subs.length) return;
+                Undo.push(`快速切换完结状态 [${item.name}]`);
+                const targetState = !item.subs.every(s => s.isDone);
+                item.subs.forEach(s => s.isDone = targetState);
+                dataChanged();
+                Storage.saveAll();
+                UI.renderAll();
+            },
+            quickTogglePaid(id) {
+                const item = State.dataset.find(o => o.id === id);
+                if (!item || !item.subs.length) return;
+                Undo.push(`快速变更账目清算状态 [${item.name}]`);
+                const targetState = !item.subs.every(s => s.isPaid);
+                item.subs.forEach(s => s.isPaid = targetState);
+                dataChanged();
+                Storage.saveAll();
+                UI.renderAll();
+            },
+            singleDelete(id) {
+                const item = State.dataset.find(o => o.id === id);
+                if (!item) return;
+                const recs = OrderOps.moveToTrash([item]);
+                Undo.pushDelete(`移入回收站 [${item.name}]`, recs);
+                Storage.saveAll(true);
+                UI.renderAll();
+            },
+            confirmDelete(id, e) {
+                e.stopPropagation();
+                const it = State.dataset.find(i => i.id === id);
+                if (!it) return;
+                this.showConfirm(`确定将「${it.name}」放入回收站？`, async () => {
+                    const recs = OrderOps.moveToTrash([it]);
+                    Undo.pushDelete(`删除 ${it.name}`, recs);
+                    Log.push(`已放入回收站: ${it.name}`);
+                    await Storage.saveAll(true);
+                    UI.renderAll();
+                });
+            },
+            openCreateModal() {
+                document.getElementById('modalTitle').textContent = '记新单';
+                document.getElementById('editId').value = '';
+                document.getElementById('fName').value = '';
+                document.getElementById('fCategory').value = '';
+                document.getElementById('fSource').value = '';
+                document.getElementById('fOrderType').value = 'boost';
+                document.getElementById('fPlayDate').value = Util.getLocalDateStr();
+                document.getElementById('subsContainer').innerHTML = '';
+                this.addSubRow();
+                document.getElementById('itemModal').classList.add('active');
+                setTimeout(() => document.getElementById('fName').focus(), 50);
+            },
+            openEdit(id) {
+                const it = State.dataset.find(i => i.id === id);
+                if (!it) return;
+                document.getElementById('modalTitle').textContent = '编辑订单';
+                document.getElementById('editId').value = id;
+                document.getElementById('fName').value = it.name;
+                document.getElementById('fCategory').value = it.category || '';
+                document.getElementById('fSource').value = it.source || '';
+                document.getElementById('fOrderType').value = it.orderType || 'boost';
+                document.getElementById('fPlayDate').value = it.playDate || Util.getLocalDateStr();
+                const c = document.getElementById('subsContainer');
+                c.innerHTML = '';
+                (it.subs || []).forEach(s => this.addSubRow(s.name, s.current, s.target, s.isDone, s.isPaid, s.note, s.amount, s.id));
+                document.getElementById('itemModal').classList.add('active');
+                setTimeout(() => document.getElementById('fName').focus(), 50);
+            },
+            addSubRow(name = '', cur = 0, tgt = 0, done = false, paid = false, note = '', amount = 0, subId = null) {
+                const div = document.createElement('div');
+                div.className = 'sub-form-card';
+                div.innerHTML = `<button class="btn-del-sub" onclick="this.parentElement.remove()">✕</button>
+                    <div class="sf-row"><input class="form-control sf-name" placeholder="子任务名称" value="${Util.escAttr(name)}" required></div>
+                    <div class="sf-row"><label>进度</label><input class="form-control sf-cur" type="number" value="${cur}" min="0"><label>目标</label><input class="form-control sf-tgt" type="number" value="${tgt}" min="0"></div>
+                    <div class="sf-row"><label>¥ 金额</label><input class="form-control sf-amount" type="number" step="0.01" inputmode="decimal" value="${amount}" min="0"></div>
+                    <div class="sf-row sf-status-row">
+                        <button type="button" class="status-btn ${done ? 'done' : 'progress'}" onclick="App.toggleFormDone(this)">${done ? '已完成' : '进行中'}</button>
+                        <input type="hidden" class="sf-done" value="${done}">
+                        <button type="button" class="status-btn ${paid ? 'paid' : 'unpaid'}" onclick="App.toggleFormPaid(this)">${paid ? '已收款' : '未收款'}</button>
+                        <input type="hidden" class="sf-paid" value="${paid}">
+                    </div>
+                    <div class="sf-row"><input class="form-control sf-note" placeholder="备注" value="${Util.escAttr(note)}"></div>
+                    <input type="hidden" class="sf-id" value="${subId || Util.genId()}">`;
+                document.getElementById('subsContainer').appendChild(div);
+            },
+            toggleFormDone(btn) {
+                const card = btn.closest('.sub-form-card');
+                if (!card) return;
+                const inp = card.querySelector('.sf-done');
+                const isDone = inp.value !== 'true';
+                inp.value = isDone ? 'true' : 'false';
+                btn.textContent = isDone ? '已完成' : '进行中';
+                btn.className = `status-btn ${isDone ? 'done' : 'progress'}`;
+                if (isDone) {
+                    const tgt = card.querySelector('.sf-tgt');
+                    const cur = card.querySelector('.sf-cur');
+                    if (tgt && cur) {
+                        const v = tgt.value.trim();
+                        if (v && !isNaN(v)) cur.value = v;
+                    }
+                }
+            },
+            toggleFormPaid(btn) {
+                const card = btn.closest('.sub-form-card');
+                if (!card) return;
+                const inp = card.querySelector('.sf-paid');
+                const isPaid = inp.value !== 'true';
+                inp.value = isPaid ? 'true' : 'false';
+                btn.textContent = isPaid ? '已收款' : '未收款';
+                btn.className = `status-btn ${isPaid ? 'paid' : 'unpaid'}`;
+            },
+            async saveItem(e) {
+                e.preventDefault();
+                const name = document.getElementById('fName').value.trim();
+                const cat = document.getElementById('fCategory').value.trim();
+                const src = document.getElementById('fSource').value.trim();
+                const type = document.getElementById('fOrderType').value;
+                const date = document.getElementById('fPlayDate').value;
+                const editId = document.getElementById('editId').value;
+                const subs = [];
+                document.querySelectorAll('#subsContainer .sub-form-card').forEach(r => {
+                    const n = r.querySelector('.sf-name').value.trim();
+                    if (!n) return;
+                    let cur = Util.clampProg(r.querySelector('.sf-cur').value);
+                    let tgt = Util.clampProg(r.querySelector('.sf-tgt').value);
+                    let subId = r.querySelector('.sf-id').value;
+                    let done = r.querySelector('.sf-done').value === 'true';
+                    let paid = r.querySelector('.sf-paid').value === 'true';
+                    if (tgt > 0 && cur > tgt) cur = tgt;
+                    if (done && tgt > 0) cur = tgt;
+                    subs.push({
+                        id: subId, name: n, current: cur, target: tgt,
+                        isDone: done, isPaid: paid,
+                        note: r.querySelector('.sf-note').value.trim(),
+                        amount: Util.clampAmt(r.querySelector('.sf-amount').value)
+                    });
+                });
+                if (!subs.length) { alert('请至少添加一个子任务'); return; }
+                if (editId) {
+                    const idx = State.dataset.findIndex(i => i.id === editId);
+                    if (idx >= 0) {
+                        Undo.push('编辑订单');
+                        State.dataset[idx] = {
+                            id: editId, name, category: cat, source: src,
+                            orderType: type, playDate: date, subs,
+                            createdAt: State.dataset[idx].createdAt || new Date().toISOString()
+                        };
+                        Log.push(`更新订单: ${name}`);
+                    } else {
+                        alert('保存失败：订单已被删除');
+                        this.closeModal();
+                        return;
+                    }
+                } else {
+                    Undo.push('新建订单');
+                    State.dataset.push({
+                        id: Util.genId(), name, category: cat, source: src,
+                        orderType: type, playDate: date, subs,
+                        createdAt: new Date().toISOString()
+                    });
+                    Log.push(`新建订单: ${name}`);
+                }
+                dataChanged();
+                await Storage.saveAll(true);
+                this.closeModal();
+                UI.renderAll();
+                if (State.activeDetailId) UI.syncDetail(State.activeDetailId);
+            },
+            closeModal() { document.getElementById('itemModal').classList.remove('active'); },
+            handleImportFile(e) {
+                const fileInput = e.target;
+                const file = fileInput.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    try {
+                        const data = JSON.parse(ev.target.result);
+                        if (!data || !data.dataset || !Array.isArray(data.dataset)) {
+                            alert('导入失败：文件格式不规范');
+                            fileInput.value = '';
+                            return;
+                        }
+                        State.importBuffer = data;
+                        document.getElementById('importModal').classList.add('active');
+                    } catch { alert('文件解析失败'); }
+                    fileInput.value = '';
+                };
+                reader.onerror = () => {
+                    alert('文件读取失败');
+                    fileInput.value = '';
+                };
+                reader.readAsText(file);
+            },
+            closeImportModal() {
+                document.getElementById('importModal').classList.remove('active');
+                State.importBuffer = null;
+            },
+            confirmImport(mode) {
+                const data = State.importBuffer;
+                if (!data) return;
+                this.closeImportModal();
+                const cleaned = data.dataset.filter(Util.validate);
+                if (mode === 'overwrite') {
+                    this.showConfirm('确定完全覆盖现有数据？此操作不可撤销！', async () => {
+                        Undo.push('导入数据（覆盖）');
+                        State.dataset = cleaned;
+                        State.logset = Array.isArray(data.logset) ? data.logset : [];
+                        State.trash = Array.isArray(data.trash) ? data.trash.filter(t => t && typeof t === 'object' && t.data && Util.validate(t.data)) : [];
+                        State.activeCategory = '';
+                        State.selectedIds.clear();
+                        State.visibleStart = 0; State.visibleEnd = 0;
+                        State.filterOrderType = '';
+                        State.filterDone = '';
+                        State.filterPaid = '';
+                        State.currentSearchKeyword = '';
+                        document.getElementById('filterOrderType').value = '';
+                        document.getElementById('filterDone').value = '';
+                        document.getElementById('filterPaid').value = '';
+                        document.getElementById('globalSearch').value = '';
+                        State.importBuffer = null;
+                        dataChanged();
+                        await Storage.saveAll(true);
+                        Log.push(`导入成功（覆盖）: ${cleaned.length} 条`);
+                        UI.renderAll();
+                        alert(`成功导入 ${cleaned.length} 条有效订单！`);
+                    });
+                } else {
+                    this.showConfirm('确定要合并数据吗？', async () => {
+                        Undo.push('导入数据（合并）');
+                        const existingFingerprints = new Set(State.dataset.map(Util.orderFingerprint));
+                        let added = 0, skipped = 0;
+                        cleaned.forEach(item => {
+                            const fp = Util.orderFingerprint(item);
+                            if (existingFingerprints.has(fp)) skipped++;
+                            else {
+                                existingFingerprints.add(fp);
+                                State.dataset.push(item);
+                                added++;
+                            }
+                        });
+                        if (Array.isArray(data.logset) && data.logset.length) {
+                            State.logset = [...data.logset, ...State.logset].slice(0, CONFIG.LOG_MAX);
+                        }
+                        State.importBuffer = null;
+                        dataChanged();
+                        await Storage.saveAll(true);
+                        Log.push(`导入成功（合并）: 新增 ${added} 条, 跳过 ${skipped} 条重复`);
+                        UI.renderAll();
+                        alert(`合并完成：新增 ${added} 条，跳过 ${skipped} 条重复订单`);
+                    });
+                }
+            },
+            openDebtModal() {
+                const body = document.getElementById('debtModalBody');
+                const debts = [];
+                State.dataset.forEach(o => {
+                    o.subs.forEach(s => {
+                        if (!s.isPaid && Util.clampAmt(s.amount) > 0) {
+                            debts.push({ orderId: o.id, subId: s.id, subName: s.name, orderName: o.name, amount: Util.clampAmt(s.amount) });
+                        }
+                    });
+                });
+                if (!debts.length) {
+                    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">🎉 所有款项已结清</div>';
+                } else {
+                    const total = debts.reduce((s, d) => s + Util.cents(d.amount), 0);
+                    const grouped = {};
+                    debts.forEach(d => { if (!grouped[d.orderName]) grouped[d.orderName] = []; grouped[d.orderName].push(d); });
+                    let html = `<div class="debt-summary"><span>待收款总额</span><span class="debt-total">${Util.fmtMoney(Util.fromCents(total))}</span></div>`;
+                    Object.keys(grouped).forEach(on => {
+                        const items = grouped[on];
+                        const subTotal = items.reduce((s, d) => s + Util.cents(d.amount), 0);
+                        html += `<div class="debt-order-group"><div class="debt-order-title"><span>📋 ${Util.esc(on)}</span><span>小计: ${Util.fmtMoney(Util.fromCents(subTotal))}</span></div>`;
+                        items.forEach(d => {
+                            html += `<div class="debt-sub-row"><span>↳ ${Util.esc(d.subName)}</span><div><span class="debt-sub-amount">${Util.fmtMoney(d.amount)}</span><button class="btn btn-primary" data-action="settleDebt" data-oid="${Util.escAttr(d.orderId)}" data-sid="${Util.escAttr(d.subId)}">结算</button></div></div>`;
+                        });
+                        html += '</div>';
+                    });
+                    body.innerHTML = html;
+                }
+                document.getElementById('debtModal').classList.add('active');
+            },
+            async settleDebt(oid, sid) {
+                const it = State.dataset.find(i => i.id === oid);
+                if (!it) return;
+                const s = it.subs.find(s => s.id === sid);
+                if (!s) return;
+                Undo.push('结算款项');
+                s.isPaid = true;
+                Log.push(`已结算: ${it.name} ${s.name}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.renderAll();
+                this.openDebtModal();
+            },
+            exportData(silent = false) {
+                const blob = new Blob([JSON.stringify({
+                    version: CONFIG.DATA_VERSION,
+                    exportDate: new Date().toISOString(),
+                    dataset: State.dataset,
+                    logset: State.logset,
+                    trash: State.trash
+                }, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `打单备份_${Util.getLocalDateStr()}_${new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(/:/g,'')}.json`;
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                if (!silent) Log.push('导出备份成功');
+            },
+            openTrashModal() {
+                const body = document.getElementById('trashModalBody');
+                State.trashSelected.clear();
+                if (!State.trash.length) {
+                    body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);">回收站为空</div>';
+                } else {
+                    body.innerHTML = State.trash.map(t => {
+                        const checked = State.trashSelected.has(t.trashId) ? 'checked' : '';
+                        return `<div class="trash-item">
+                            <label style="display:flex;align-items:center;gap:8px;">
+                                <input type="checkbox" class="order-checkbox trash-check" data-tid="${Util.escAttr(t.trashId)}" ${checked} onchange="App.toggleTrashSelect(this)">
+                            </label>
+                            <span style="font-weight:600;max-width:55%;overflow:hidden;text-overflow:ellipsis;">${Util.esc(t.name)}</span>
+                            <div style="display:flex;gap:4px;">
+                                <button class="btn btn-secondary" style="font-size:11px;" data-action="restoreTrash" data-tid="${Util.escAttr(t.trashId)}">还原</button>
+                                <button class="btn" style="font-size:11px;background:var(--red-bg);color:var(--red-text);" data-action="permanentDeleteTrash" data-tid="${Util.escAttr(t.trashId)}">彻底删除</button>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+                document.getElementById('trashModal').classList.add('active');
+            },
+            toggleTrashSelect(cb) {
+                const tid = cb.dataset.tid;
+                if (cb.checked) State.trashSelected.add(tid);
+                else State.trashSelected.delete(tid);
+            },
+            batchRestoreTrash() {
+                if (!State.trashSelected.size) { alert('请选择要还原的订单'); return; }
+                const toRestore = State.trash.filter(t => State.trashSelected.has(t.trashId));
+                this.showConfirm(`确定批量还原 ${toRestore.length} 个订单？`, async () => {
+                    Undo.push('批量还原回收站');
+                    OrderOps.restoreFromTrash(toRestore);
+                    State.trashSelected.clear();
+                    await Storage.saveAll(true);
+                    UI.renderAll();
+                    document.getElementById('trashModal').classList.remove('active');
+                    Log.push(`批量还原 ${toRestore.length} 个订单`);
+                });
+            },
+            batchPermanentDeleteTrash() {
+                if (!State.trashSelected.size) { alert('请选择要彻底删除的订单'); return; }
+                const toDelete = State.trash.filter(t => State.trashSelected.has(t.trashId));
+                this.showConfirm(`确定永久删除 ${toDelete.length} 个订单？`, async () => {
+                    State.trash = State.trash.filter(t => !State.trashSelected.has(t.trashId));
+                    State.trashSelected.clear();
+                    await Storage.saveAll(true);
+                    document.getElementById('trashModal').classList.remove('active');
+                    Log.push(`批量彻底删除 ${toDelete.length} 个订单`);
+                });
+            },
+            async restoreTrash(trashId) {
+                const idx = State.trash.findIndex(t => t.trashId === trashId);
+                if (idx < 0) return;
+                const item = State.trash[idx];
+                Undo.push('还原订单');
+                OrderOps.restoreFromTrash([item]);
+                Log.push(`已还原: ${item.name}`);
+                await Storage.saveAll(true);
+                UI.renderAll();
+                this.openTrashModal();
+            },
+            async permanentDeleteTrash(trashId) {
+                const idx = State.trash.findIndex(t => t.trashId === trashId);
+                if (idx < 0) return;
+                const item = State.trash[idx];
+                this.showConfirm(`确定永久删除「${item.name}」？`, async () => {
+                    State.trash.splice(idx, 1);
+                    await Storage.saveAll(true);
+                    this.openTrashModal();
+                });
+            },
+            initSwipeHandler() {
+                let item = null, startX = 0, startY = 0, movedX = 0, movedY = 0, swiping = false;
+                const cont = document.getElementById('cardDeckContainer');
+                cont.addEventListener('touchstart', e => {
+                    const t = e.target.closest('.swipe-item');
+                    if (!t) return;
+                    if (item && item !== t) this.closeSwipe(item);
+                    item = t;
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                    movedX = 0; movedY = 0;
+                    swiping = true;
+                }, { passive: true });
+                cont.addEventListener('touchmove', e => {
+                    if (!swiping || !item) return;
+                    movedX = e.touches[0].clientX - startX;
+                    movedY = e.touches[0].clientY - startY;
+                    if (movedX < -10 && Math.abs(movedX) > Math.abs(movedY) * 1.5) {
+                        e.preventDefault();
+                        const inner = item.querySelector('.swipe-item-inner');
+                        inner.style.transform = `translateX(${Math.max(-120, Math.min(0, movedX))}px)`;
+                    }
+                }, { passive: false });
+                cont.addEventListener('touchend', () => {
+                    if (!swiping || !item) return;
+                    const inner = item.querySelector('.swipe-item-inner');
+                    if (movedX < -60 && Math.abs(movedX) > Math.abs(movedY) * 1.5) {
+                        item.classList.add('open');
+                        inner.style.transform = 'translateX(-120px)';
+                    } else {
+                        this.closeSwipe(item);
+                    }
+                    swiping = false;
+                });
+                document.addEventListener('click', e => {
+                    if (item && !item.contains(e.target)) this.closeSwipe(item);
+                });
+            },
+            initSwipeItems() {
+                const openItem = document.querySelector('.swipe-item.open');
+                const openId = openItem ? openItem.dataset.id : null;
+                document.querySelectorAll('.swipe-item.open').forEach(i => {
+                    if (!openId || i.dataset.id !== openId) this.closeSwipe(i);
+                });
+                if (openId) {
+                    const newEl = document.querySelector(`.swipe-item[data-id="${openId}"]`);
+                    if (newEl) {
+                        newEl.classList.add('open');
+                        newEl.querySelector('.swipe-item-inner').style.transform = 'translateX(-120px)';
+                    }
+                }
+            },
+            closeSwipe(item) {
+                item.classList.remove('open');
+                item.querySelector('.swipe-item-inner').style.transform = '';
+            },
+            async toggleSubDone(oid, sid, dot) {
+                const it = State.dataset.find(i => i.id === oid);
+                if (!it) return;
+                const s = it.subs.find(s => s.id === sid);
+                if (!s) return;
+                Undo.push('切换子任务完成');
+                s.isDone = !s.isDone;
+                if (s.isDone) s.current = s.target;
+                Log.push(`详情-完成: ${it.name} ${s.name}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.invalidateCache();
+                UI.syncDetail(oid);
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+                UI.updateDonut(UI.getFiltered());
+            },
+            async toggleSubPaid(oid, sid, dot) {
+                const it = State.dataset.find(i => i.id === oid);
+                if (!it) return;
+                const s = it.subs.find(s => s.id === sid);
+                if (!s) return;
+                Undo.push('切换子任务收款');
+                s.isPaid = !s.isPaid;
+                Log.push(`详情-收款: ${it.name} ${s.name}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.invalidateCache();
+                UI.syncDetail(oid);
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+            },
+            async stepProg(oid, sid, step) {
+                const it = State.dataset.find(i => i.id === oid);
+                if (!it) return;
+                const s = it.subs.find(s => s.id === sid);
+                if (!s) return;
+                if (step < 0 && s.current <= 0) return;
+                if (step > 0 && s.target > 0 && s.current >= s.target) return;
+                Undo.push('微调进度');
+                s.current = Util.clampProg(s.current + step);
+                if (s.target > 0) {
+                    if (s.current >= s.target) {
+                        s.current = s.target;
+                        s.isDone = true;
+                    } else {
+                        s.isDone = false;
+                    }
+                }
+                Log.push(`进度: ${it.name} ${s.name} ${s.current}`);
+                dataChanged();
+                await Storage.saveAll();
+                UI.invalidateCache();
+                UI.syncDetail(oid);
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+                UI.updateDonut(UI.getFiltered());
+            },
+            async updateAmt(oid, sid, val, inp) {
+                if (this._amtUpdating) return;
+                this._amtUpdating = true;
+                const it = State.dataset.find(i => i.id === oid);
+                if (!it) { this._amtUpdating = false; return; }
+                const s = it.subs.find(s => s.id === sid);
+                if (!s) { this._amtUpdating = false; return; }
+                const clamped = Util.clampAmt(val);
+                const changed = s.amount !== clamped;
+                if (changed) {
+                    Undo.push('修改金额');
+                    s.amount = clamped;
+                    Log.push(`金额: ${it.name} ${s.name} ${Util.fmtMoney(clamped)}`);
+                    dataChanged();
+                    await Storage.saveAll();
+                    UI.invalidateCache();
+                }
+                if (inp) inp.value = clamped;
+                if (State.activeDetailId === oid) UI.syncDetail(oid);
+                UI.renderCards(UI.getFiltered());
+                UI.renderStats(UI.getFiltered());
+                this._amtUpdating = false;
+            },
+            showConfirm(msg, cb) {
+                document.getElementById('confirmModalMsg').textContent = msg;
+                document.getElementById('confirmModal').classList.add('active');
+                document.getElementById('confirmModal')._cb = cb;
+            },
+            closeConfirm(confirmed) {
+                const modal = document.getElementById('confirmModal');
+                modal.classList.remove('active');
+                if (confirmed && typeof modal._cb === 'function') {
+                    modal._cb();
+                }
+                modal._cb = null;
+            }
+        };
+
+        App.init();
+    </script>
+</body>
+</html>
